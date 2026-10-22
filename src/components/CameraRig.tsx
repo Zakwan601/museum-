@@ -1,0 +1,150 @@
+import { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { ROOM, CAMERA } from '../config';
+import type { CameraState } from '../controls';
+import { ease } from '../lib/kiss';
+import type { KissState } from '../lib/kiss';
+import type { ExperienceSettings } from '../hooks/useExperienceSettings';
+import { MUSEUM_BOUNDS, cameraWallDistance, constrainMuseumPosition, museumRoomAt } from '../lib/museumLayout';
+
+interface Props { cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
+export default function CameraRig({ cameraState, charPos, companionPos, kiss, settings }: Props) {
+  const { camera, gl, scene } = useThree();
+  const dragPointerId = useRef<number | null>(null);
+  const last = useRef({ x: 0, y: 0, distance: 0, interactive: false });
+  const smoothAzimuth = useRef(cameraState.azimuth), smoothPitch = useRef(cameraState.pitch);
+  const anchor = useRef(new THREE.Vector3(0, 0, 4));
+  const target = useMemo(() => new THREE.Vector3(), []), offset = useMemo(() => new THREE.Vector3(), []);
+  const desired = useMemo(() => new THREE.Vector3(), []), ray = useMemo(() => new THREE.Raycaster(), []);
+  const obstacles = useRef<THREE.Object3D[]>([]), intersections = useRef<THREE.Intersection[]>([]);
+  const orbitDistance = useRef(settings.distance);
+  const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
+  const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
+  const shotTarget = useMemo(() => new THREE.Vector3(), []);
+  const shotDistance = useRef(3.4);
+  const pairOffset = useRef(new THREE.Vector3(.47, 0, -.15));
+  const smoothOffset = useRef(new THREE.Vector3(0, 3, 4));
+
+  useEffect(() => {
+    obstacles.current = [];
+    scene.traverse(o => { if (o.userData.cameraObstacle) obstacles.current.push(o); });
+  }, [scene]);
+
+  useEffect(() => {
+    const el = gl.domElement;
+    const down = (e: PointerEvent) => {
+      if (kiss.active || cameraState.inputLocked || dragPointerId.current !== null || e.button !== 0) return;
+      const rect = el.getBoundingClientRect();
+      const point = new THREE.Vector2((e.clientX - rect.left) / rect.width * 2 - 1, -(e.clientY - rect.top) / rect.height * 2 + 1);
+      ray.far = Infinity;
+      ray.setFromCamera(point, camera);
+      // A touch starting on a photograph belongs to the photograph, not the orbit.
+      const hit = ray.intersectObjects(scene.children, true).find(h => (h.object as THREE.Mesh).isMesh);
+      dragPointerId.current = e.pointerId;
+      last.current = { x: e.clientX, y: e.clientY, distance: 0, interactive: Boolean(hit?.object.userData.interactivePhoto || hit?.object.parent?.userData.interactivePhoto) };
+    };
+    const move = (e: PointerEvent) => {
+      if (kiss.active || cameraState.inputLocked) { dragPointerId.current = null; return; }
+      if (dragPointerId.current !== e.pointerId) return;
+      const dx = e.clientX - last.current.x, dy = e.clientY - last.current.y;
+      last.current.x = e.clientX; last.current.y = e.clientY;
+      last.current.distance += Math.hypot(dx, dy);
+      if (last.current.distance < CAMERA.dragThreshold) return;
+      cameraState.suppressPhotoClickUntil = performance.now() + 250;
+      if (last.current.interactive) return;
+      if (!el.hasPointerCapture(e.pointerId)) el.setPointerCapture(e.pointerId);
+      cameraState.azimuth -= dx * CAMERA.rotationSensitivity;
+      cameraState.pitch = THREE.MathUtils.clamp(cameraState.pitch + dy * CAMERA.pitchSensitivity, CAMERA.minPitch, CAMERA.maxPitch);
+      e.preventDefault();
+    };
+    const up = (e: PointerEvent) => {
+      if (dragPointerId.current !== e.pointerId) return;
+      if (last.current.distance >= CAMERA.dragThreshold) cameraState.suppressPhotoClickUntil = performance.now() + 250;
+      dragPointerId.current = null;
+      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    };
+    const blur = () => { dragPointerId.current = null; };
+    el.addEventListener('pointerdown', down);
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+    window.addEventListener('blur', blur);
+    return () => { el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('blur', blur); };
+  }, [camera, cameraState, gl, kiss, ray, scene]);
+
+  useFrame((_, frameDelta) => {
+    const delta = Math.min(frameDelta, .05);
+    smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, 12, delta);
+    smoothPitch.current = THREE.MathUtils.damp(smoothPitch.current, cameraState.pitch, 12, delta);
+    cameraState.smoothedAzimuth = smoothAzimuth.current;
+  }, -2);
+
+  useFrame((_, frameDelta) => {
+    const dt = Math.min(frameDelta, .05), p = profile.current;
+    p.distance = THREE.MathUtils.damp(p.distance, settings.distance, 5, dt);
+    p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
+    p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
+    p.compact = THREE.MathUtils.damp(p.compact, settings.compact ? 1 : 0, 5, dt);
+    anchor.current.lerp(charPos, 1 - Math.exp(-12 * dt));
+    desired.copy(companionPos).sub(charPos).multiplyScalar(.45).clampLength(0, .65);
+    pairOffset.current.lerp(desired, 1 - Math.exp(-8 * dt));
+    const az = smoothAzimuth.current, sin = Math.sin(az), cos = Math.cos(az);
+    // Aim slightly above and ahead of the feet, leaving the pair below center.
+    target.copy(anchor.current); target.y += p.height;
+    target.x += (pairOffset.current.x - sin * .35) * p.compact;
+    target.z += (pairOffset.current.z - cos * .35) * p.compact;
+    const minX = MUSEUM_BOUNDS.minX + CAMERA.wallMargin, maxX = MUSEUM_BOUNDS.maxX - CAMERA.wallMargin;
+    const minZ = MUSEUM_BOUNDS.minZ + CAMERA.wallMargin, maxZ = MUSEUM_BOUNDS.maxZ - CAMERA.wallMargin;
+    constrainMuseumPosition(target, .3);
+    const pitch = THREE.MathUtils.clamp(smoothPitch.current + p.pitch, .15 + p.compact * .15, 1.35);
+    const horizontal = cameraWallDistance(target, sin, cos, p.distance * Math.cos(pitch));
+    const ceiling = CAMERA.maxY - target.y;
+    const height = Math.min(ceiling, Math.max(p.distance * Math.sin(pitch), p.compact * Math.sqrt(Math.max(0, p.distance ** 2 - horizontal ** 2))));
+    offset.set(sin * horizontal, height, cos * horizontal);
+    let available = offset.length();
+    offset.normalize();
+    ray.set(target, offset); ray.far = available + .3;
+    intersections.current.length = 0;
+    ray.intersectObjects(obstacles.current, true, intersections.current);
+    if (intersections.current.length) available = Math.max(.2, Math.min(available, intersections.current[0].distance - .3));
+    orbitDistance.current = available < orbitDistance.current ? available : THREE.MathUtils.damp(orbitDistance.current, available, 6, dt);
+    desired.copy(target).addScaledVector(offset, orbitDistance.current);
+    // Smooth elevation/orientation changes while enforcing room bounds immediately.
+    smoothOffset.current.lerp(desired.sub(target), 1 - Math.exp(-14 * dt));
+    camera.position.copy(target).add(smoothOffset.current);
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, minX, maxX);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, minZ, maxZ);
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, CAMERA.minY, CAMERA.maxY);
+    // Check the interpolated position too: a smooth orbit must not cut through a vase.
+    offset.copy(camera.position).sub(target);
+    const actualDistance = offset.length();
+    if (actualDistance > .001) {
+      ray.set(target, offset.divideScalar(actualDistance)); ray.far = actualDistance + .3;
+      intersections.current.length = 0;
+      ray.intersectObjects(obstacles.current, true, intersections.current);
+      if (intersections.current.length && intersections.current[0].distance < actualDistance + .3) camera.position.copy(target).addScaledVector(offset, Math.max(.2, intersections.current[0].distance - .3));
+    }
+    camera.lookAt(target);
+    const perspective = camera as THREE.PerspectiveCamera;
+    const nextFov = THREE.MathUtils.damp(perspective.fov, settings.fov, 6, dt);
+    if (Math.abs(nextFov - perspective.fov) > .005) { perspective.fov = nextFov; perspective.updateProjectionMatrix(); }
+    if (kiss.active) {
+      const t = kiss.elapsed;
+      const blend = ease(t / 1.8) * (1 - ease((t - 6.2) / 2));
+      const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (kiss.mode === 'kiss' && !settings.reducedMotion ? .22 * Math.sin(t * .55) : 0);
+      const aspect = perspective.aspect || 1;
+      const desiredDistance = Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
+      shotDistance.current = THREE.MathUtils.damp(shotDistance.current, desiredDistance, 6, dt);
+      const distance = shotDistance.current;
+      const room = museumRoomAt(kiss.center.x);
+      shotTarget.copy(kiss.center); shotTarget.y = 1.08;
+      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, 1.85, kiss.center.z + Math.cos(orbit) * distance);
+      shot.position.x = THREE.MathUtils.clamp(shot.position.x, room.centerX - ROOM.width / 2 + CAMERA.wallMargin, room.centerX + ROOM.width / 2 - CAMERA.wallMargin);
+      shot.position.z = THREE.MathUtils.clamp(shot.position.z, minZ, maxZ);
+      shot.lookAt(shotTarget);
+      camera.position.lerp(shot.position, blend);
+      camera.quaternion.slerp(shot.quaternion, blend);
+    }
+  });
+  return null;
+}

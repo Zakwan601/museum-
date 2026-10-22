@@ -1,0 +1,71 @@
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+
+.chrome-check
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Package manager
+.npm/
+.pnpm-store/
+
+# Testing and coverage
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+vite.config.*.timestamp-*
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor settings
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.old
+
+# Local databases and debug files
+*.sqlite
+*.sqlite3
+*.db
+
+# Optional local deployment output
+.vercel/
+.netlify/
+
+# Optional local tool caches
+.cache/
+.parcel-cache/
+.turbo/
