@@ -121,8 +121,8 @@ export default function Character({ controls, cameraState, charPos, companionPos
     companionPos.copy(companion.current.position);
   }, -1);
   return <>
-    <group ref={group} position={[0, 0, 4]}><Chibi variant="lavender" motion={motion} kissPose={kissPose} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} position={[1.05, 0, 3.78]}><Chibi variant="rose" motion={companionMotion} kissPose={kissPose} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi variant="rose" poseSide={-1} motion={motion} kissPose={kissPose} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi variant="lavender" poseSide={1} motion={companionMotion} kissPose={kissPose} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

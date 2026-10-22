@@ -41,8 +41,8 @@ heartShape.moveTo(0, -.05);
 heartShape.bezierCurveTo(-.12, .015, -.065, .1, 0, .045);
 heartShape.bezierCurveTo(.065, .1, .12, .015, 0, -.05);
 const heart = new THREE.ExtrudeGeometry(heartShape, { depth: .018, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: .008, bevelThickness: .008, curveSegments: 8 });
-interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; kissPose?: MutableRefObject<number>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean }
-export default function Chibi({ variant, motion, kissPose, photoPose, reducedMotion = false }: Props) {
+interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; kissPose?: MutableRefObject<number>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ variant, motion, kissPose, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
@@ -75,16 +75,16 @@ export default function Chibi({ variant, motion, kissPose, photoPose, reducedMot
       leftArm.current.rotation.z = .12 + Math.sin(time * 1.7) * .035;
       rightArm.current.rotation.z = -.12 - Math.sin(time * 1.7) * .035;
       // Reach toward the partner with the inner hand; keep outer arms relaxed.
-      if (rose) leftArm.current.rotation.z = THREE.MathUtils.lerp(leftArm.current.rotation.z, -.68, posing);
+      if (poseSide > 0) leftArm.current.rotation.z = THREE.MathUtils.lerp(leftArm.current.rotation.z, -.68, posing);
       else rightArm.current.rotation.z = THREE.MathUtils.lerp(rightArm.current.rotation.z, .68, posing);
       leftLeg.current.rotation.x = -swing; rightLeg.current.rotation.x = swing;
     }
     if (root.current) { root.current.position.y = .012 + Math.sin(time * 2) * .008 + Math.abs(Math.sin(phase.current)) * .035 * blend.current; root.current.rotation.z = Math.sin(phase.current) * .018 * blend.current; }
-    if (head.current) { head.current.rotation.z = Math.sin(time * 1.1) * .025 * (1 - affection) + affection * (rose ? -.1 : .1); head.current.rotation.x = -.06 * affection; head.current.rotation.y = Math.sin(time * .65) * .045 * (1 - blend.current) * (1 - affection); }
-    if (head.current) head.current.rotation.z += posing * (rose ? .08 : -.08);
+    if (head.current) { head.current.rotation.z = Math.sin(time * 1.1) * .025 * (1 - affection) - affection * poseSide * .1; head.current.rotation.x = -.06 * affection; head.current.rotation.y = Math.sin(time * .65) * .045 * (1 - blend.current) * (1 - affection); }
+    if (head.current) head.current.rotation.z += posing * poseSide * .08;
     if (reducedMotion) {
       if (root.current) { root.current.position.y = .012; root.current.rotation.z = 0; }
-      if (head.current) { head.current.rotation.y = 0; head.current.rotation.z = affection * (rose ? -.1 : .1) + posing * (rose ? .08 : -.08); }
+      if (head.current) { head.current.rotation.y = 0; head.current.rotation.z = -affection * poseSide * .1 + posing * poseSide * .08; }
     }
     if (eyes.current) { const blink = time % 4.7; eyes.current.scale.y = (blink < .14 ? Math.max(.08, Math.abs(blink - .07) / .07) : 1) * (1 - affection * .9); }
     if (mouth.current) { mouth.current.scale.set(1 - affection * .65, 1 + affection * .3, 1); mouth.current.position.z = .332 + affection * .045; }

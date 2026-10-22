@@ -25,3 +25,9 @@ Additional checks:
 - `node checks/room-navigation.mjs`: actual WASD and touch-joystick movement through every passage in both directions, both characters reaching each destination, room-label updates, camera-wall clearance during travel, and photo-pose/kiss restoration inside Outro.
 
 Both checks passed in Chrome desktop and 390×844 phone emulation. Existing mobile interaction checks were rerun for photo taps, dragging, modal scrolling, music, settings, and reduced motion.
+
+## Mobile immersive mode
+
+`node checks/immersive-mode.mjs` checks unsupported and denied fullscreen, a resolved request without actual fullscreen, unsupported/denied landscape lock, exit denial, system exit, an exit during a pending orientation request, responsive landscape controls, and absence of the immersive UI on desktop. Those error paths use mocked browser API responses. The same check also exercises Chrome's actual native Fullscreen API for entry and exit without mocks.
+
+Fullscreen ownership is derived from `document.fullscreenElement`; no CSS-only state pretends to be fullscreen. A landscape lock is attempted only after confirmed fullscreen. The museum continues to use its real viewport for layout, and orientation locks acquired by the museum are released on exit. Browser/OS support still determines whether browser chrome can hide or orientation can lock. No new dependencies are used.

@@ -25,10 +25,13 @@ export function useExperienceSettings() {
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const pointer = matchMedia('(pointer: coarse)');
     window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    document.addEventListener('fullscreenchange', update);
+    screen.orientation?.addEventListener?.('change', update);
     window.visualViewport?.addEventListener('resize', update);
     motion.addEventListener('change', update);
     pointer.addEventListener('change', update);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', update); window.visualViewport?.removeEventListener('resize', update); motion.removeEventListener('change', update); pointer.removeEventListener('change', update); };
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); document.removeEventListener('fullscreenchange', update); screen.orientation?.removeEventListener?.('change', update); window.visualViewport?.removeEventListener('resize', update); motion.removeEventListener('change', update); pointer.removeEventListener('change', update); };
   }, []);
   return settings;
 }

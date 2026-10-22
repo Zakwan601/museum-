@@ -64,12 +64,19 @@ export default function CameraRig({ cameraState, charPos, companionPos, kiss, se
       dragPointerId.current = null;
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
     };
-    const blur = () => { dragPointerId.current = null; };
+    const blur = () => {
+      const pointer = dragPointerId.current;
+      dragPointerId.current = null;
+      if (pointer !== null && el.hasPointerCapture(pointer)) el.releasePointerCapture(pointer);
+    };
     el.addEventListener('pointerdown', down);
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
     window.addEventListener('blur', blur);
-    return () => { el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('blur', blur); };
+    window.addEventListener('resize', blur);
+    window.addEventListener('orientationchange', blur);
+    document.addEventListener('fullscreenchange', blur);
+    return () => { el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('blur', blur); window.removeEventListener('resize', blur); window.removeEventListener('orientationchange', blur); document.removeEventListener('fullscreenchange', blur); };
   }, [camera, cameraState, gl, kiss, ray, scene]);
 
   useFrame((_, frameDelta) => {

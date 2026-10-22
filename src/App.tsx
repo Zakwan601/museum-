@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Camera, Heart, Menu, X, ArrowUpRight } from 'lucide-react';
 import * as THREE from 'three';
@@ -12,8 +12,10 @@ import { createControlState, createCameraState } from './controls';
 import type { PhotoConfig } from './config';
 import { createKissState } from './lib/kiss';
 import { MUSEUM_ROOMS } from './lib/museumLayout';
+import ImmersiveMode from './components/ImmersiveMode';
 
 export default function App() {
+  const museumElement = useRef<HTMLDivElement>(null);
   const controls = useMemo(createControlState, []);
   const cameraState = useMemo(createCameraState, []);
   const kiss = useMemo(createKissState, []);
@@ -64,7 +66,7 @@ export default function App() {
   };
   const blocked = Boolean(selectedPhoto) || menuOpen || isKissing;
   return (
-    <div className="museum-app" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+    <div ref={museumElement} className="museum-app">
       <Canvas
         shadows={!batterySaver}
         camera={initialCamera}
@@ -109,6 +111,8 @@ export default function App() {
         <div className={`museum-joystick ${blocked ? 'invisible' : ''}`}><VirtualJoystick controls={controls} disabled={blocked} /></div>
       </div>
       {selectedPhoto && <PhotoModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />}
+      <ImmersiveMode target={museumElement} enabled={settings.compact} modalOpen={Boolean(selectedPhoto)} hideEntry={menuOpen || isKissing || showHint} />
     </div>
   );
 }
+

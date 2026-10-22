@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body { font-family: "Gorditas", serif; font-weight: 400; font-style: normal; }
+.gorditas-regular { font-family: "Gorditas", serif; font-weight: 400; font-style: normal; }
+.gorditas-bold { font-family: "Gorditas", serif; font-weight: 700; font-style: normal; }
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; background: #261923; -webkit-tap-highlight-color: transparent; }
@@ -51,3 +55,17 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 .room-progress { font-size: 9px; color: #f8e4e699; letter-spacing: .12em; }
 .room-route { display: grid; gap: 8px; margin: 16px 0 12px; color: #f9dfe580; font-size: 13px; }
 .room-route [aria-current=step] { color: #ffe7ed; }
+.immersive-ui { position: absolute; inset: 0; z-index: 60; pointer-events: none; --immersive-top: max(12px, env(safe-area-inset-top)); --immersive-right: max(14px, env(safe-area-inset-right)); }
+.immersive-entry { pointer-events: auto; position: absolute; top: calc(var(--immersive-top) + 60px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; max-width: calc(100% - 28px); width: max-content; padding: 10px 20px; border: 1px solid #f5c8da85; border-radius: 999px; color: #fff0f4; background: linear-gradient(135deg, #79516fe6, #493f65ed); box-shadow: 0 4px 22px #24142b44, inset 0 1px 0 #ffe3ed26; font-size: 13px; cursor: pointer; touch-action: manipulation; }
+.immersive-entry svg { flex-shrink: 0; }
+.immersive-entry:hover { background: linear-gradient(135deg, #8c5d7de6, #574b78ed); }
+.immersive-exit { position: absolute; top: var(--immersive-top); right: calc(var(--immersive-right) + 58px); background: #301e2d70; }
+.immersive-message { pointer-events: auto; position: absolute; top: calc(var(--immersive-top) + 120px); left: 50%; transform: translateX(-50%); display: flex; align-items: flex-start; gap: 6px; width: min(340px, calc(100% - 28px)); padding: 8px 4px 8px 14px; border: 1px solid #f5c8da55; border-radius: 15px; background: #261923ef; color: #f9e5ec; font-size: 12px; line-height: 1.65; }
+.immersive-message p { flex: 1; margin: 5px 0; }
+.immersive-message button { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 44px; height: 44px; }
+.immersive-ui.is-fullscreen .immersive-message { top: calc(var(--immersive-top) + 60px); }
+.museum-app:fullscreen { position: fixed; inset: 0; width: 100%; height: 100%; background: #261923; }
+.museum-app[data-immersive=true] .museum-location { max-width: calc(100vw - 224px); }
+.immersive-ui.over-modal .immersive-exit { top: auto; bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px)); right: var(--immersive-right); }
+.museum-app[data-immersive=true] .photo-modal-scroll { padding-bottom: 70px; }
+@media (orientation: landscape) { .immersive-entry { top: var(--immersive-top); min-height: 44px; padding: 8px 16px; font-size: 12px; } .immersive-message { top: calc(var(--immersive-top) + 54px); } }

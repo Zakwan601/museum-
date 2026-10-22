@@ -17,7 +17,9 @@ export default function VirtualJoystick({ controls, disabled = false }: Props) {
     const visibility = () => { if (document.hidden) reset(); };
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('resize', reset);
-    return () => { reset(); window.removeEventListener('blur', reset); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('resize', reset); };
+    window.addEventListener('orientationchange', reset);
+    document.addEventListener('fullscreenchange', reset);
+    return () => { reset(); window.removeEventListener('blur', reset); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('resize', reset); window.removeEventListener('orientationchange', reset); document.removeEventListener('fullscreenchange', reset); };
   }, [disabled, reset]);
   const move = (e: React.PointerEvent) => {
     if (pointer.current !== e.pointerId) return;
