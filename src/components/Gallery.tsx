@@ -5,6 +5,17 @@ import { ROOM, FLOWER_POSITIONS } from '../config';
 import RomanticDetails from './RomanticDetails';
 import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 
+const rugShape = new THREE.Shape();
+rugShape.moveTo(0, 1.8);
+rugShape.bezierCurveTo(-1.25, 3.65, -3.5, 3.3, -3.5, 1.2);
+rugShape.bezierCurveTo(-3.5, -.5, -1.4, -2.5, 0, -3.7);
+rugShape.bezierCurveTo(1.4, -2.5, 3.5, -.5, 3.5, 1.2);
+rugShape.bezierCurveTo(3.5, 3.3, 1.25, 3.65, 0, 1.8);
+const rugGeometry = new THREE.ShapeGeometry(rugShape, 40);
+const rugBorder = new THREE.Shape(rugShape.getPoints(40));
+rugBorder.holes.push(new THREE.Path(rugShape.getPoints(40).map(p => p.multiplyScalar(.973)).reverse()));
+const rugBorderGeometry = new THREE.ShapeGeometry(rugBorder);
+
 function FlowerArrangement({ position }: { position: [number, number, number] }) {
   const flowers = useMemo(
     () =>
@@ -131,12 +142,10 @@ export default function Gallery({ settings, charPos }: { settings: ExperienceSet
         shadow-camera-far={30}
       />
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} scale={[1, 1.4, 1]} receiveShadow>
-        <circleGeometry args={[3, 64]} />
+      <mesh geometry={rugGeometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
         <meshStandardMaterial color="#994f72" roughness={0.9} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} scale={[1.18, 1.65, 1]}>
-        <ringGeometry args={[2.46, 2.49, 64]} />
+      <mesh geometry={rugBorderGeometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} scale={.965}>
         <meshStandardMaterial color="#c4a26a" roughness={0.4} metalness={0.5} side={THREE.DoubleSide} />
       </mesh>
 

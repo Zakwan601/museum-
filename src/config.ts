@@ -75,9 +75,9 @@ export const PHOTOS: PhotoConfig[] = [
     title: 'Candlelight for Two',
     caption: 'The flicker of candles, the warmth of your smile — a perfect evening.',
     date: 'December 24, 2023',
-    position: [9.85, 2, 3],
+    position: [9.85, 2, 4.55],
     rotation: [0, -Math.PI / 2, 0],
-    lightPosition: [8.5, 2.2, 3],
+    lightPosition: [8.5, 2.2, 4.55],
   },
   {
     id: 'hands',
@@ -85,9 +85,9 @@ export const PHOTOS: PhotoConfig[] = [
     title: 'Hand in Hand',
     caption: 'Your hand in mine — the simplest gesture, the greatest comfort.',
     date: 'February 14, 2024',
-    position: [9.85, 2, -3],
+    position: [9.85, 2, -4.55],
     rotation: [0, -Math.PI / 2, 0],
-    lightPosition: [8.5, 2.2, -3],
+    lightPosition: [8.5, 2.2, -4.55],
   },
 ];
 

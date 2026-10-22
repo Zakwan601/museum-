@@ -39,11 +39,26 @@ export default function RomanticDetails({ reducedMotion, compact }: { reducedMot
     const cables: THREE.TubeGeometry[] = [];
     // Deterministic placements stay identical across renders and devices.
     const noise = (n: number) => { const value = Math.sin(n * 127.1 + 311.7) * 43758.5453; return value - Math.floor(value); };
+    // Uneven handfuls and scattered singles replace the two parallel petal bands.
+    const clusters = Array.from({ length: 13 }, (_, i) => ({
+      x: (noise(i + 7001) - .5) * 14.8,
+      z: (noise(i + 7101) - .5) * 10.6,
+      spread: .35 + noise(i + 7201) * 1.05,
+    }));
     for (let i = 0; i < 220; i++) {
-      const side = i % 2 ? 1 : -1;
-      const z = noise(i + 1) * 11 - 5.5;
-      const x = side * (2.5 + noise(i + 401) * 1.1) + Math.sin(z) * .2;
-      petals.push({ position: [x, .045, z], scale: [.045 + noise(i + 40) * .04, .009, .035], rotation: [0, noise(i + 20) * Math.PI, .15], color: ['#b24b6d', '#d57e94', '#f0bac5'][i % 3] });
+      const cluster = clusters[Math.floor(noise(i + 101) * clusters.length)];
+      const angle = noise(i + 201) * Math.PI * 2;
+      const radius = Math.sqrt(noise(i + 301)) * cluster.spread;
+      const clustered = noise(i + 401) < .68;
+      const x = clustered ? cluster.x + Math.cos(angle) * radius : (noise(i + 501) - .5) * 16.4;
+      const z = clustered ? cluster.z + Math.sin(angle) * radius : (noise(i + 601) - .5) * 11.6;
+      const size = .028 + noise(i + 801) ** 1.4 * .065;
+      petals.push({
+        position: [x, .05 + noise(i + 901) * .006, z],
+        scale: [size, .005 + noise(i + 1001) * .005, size * (.4 + noise(i + 1101) * .45)],
+        rotation: [(noise(i + 1201) - .5) * .24, noise(i + 1301) * Math.PI * 2, (noise(i + 1401) - .5) * .25],
+        color: ['#a93659', '#c75b7b', '#e293a8', '#f0bac5', '#d57e94'][Math.floor(noise(i + 1501) * 5)],
+      });
     }
     for (const side of [-1, 1]) for (let i = 0; i < 7; i++) {
       const x = side * (i < 4 ? 9.48 : 3.7 + (i - 4) * 1.5), z = i < 4 ? -4.5 + i * 3 : -6.5;
