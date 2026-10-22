@@ -15,6 +15,7 @@ export default function Character({ controls, cameraState, charPos, companionPos
   const followSide = useRef(1);
   const companionVelocity = useRef(new THREE.Vector3());
   const kissPose = useRef(0);
+  const kissHands = useRef<[THREE.Vector3, THREE.Vector3]>([new THREE.Vector3(), new THREE.Vector3()]);
   const photoPose = useRef(0);
   const saved = useRef({ sequence: 0, player: new THREE.Vector3(), partner: new THREE.Vector3(), playerYaw: 0, partnerYaw: 0, target: new THREE.Vector3() });
   useEffect(() => { charPos.set(0, 0, 4); }, [charPos]);
@@ -47,6 +48,11 @@ export default function Character({ controls, cameraState, charPos, companionPos
       const photoYaw = Math.atan2(-kiss.axis.z, kiss.axis.x);
       pose(group.current, state.player, state.playerYaw, -1, kiss.mode === 'photo' ? photoYaw + .06 : faceYaw, motion);
       pose(companion.current, state.partner, state.partnerYaw, 1, kiss.mode === 'photo' ? photoYaw - .06 : faceYaw + Math.PI, companionMotion);
+      // Shared world-space grip points keep both pairs of hands together,
+      // even when the couple faces a different direction in another room.
+      kissHands.current.forEach((hand, index) => hand.copy(kiss.center).addScaledVector(
+        state.target.set(kiss.axis.z, 0, -kiss.axis.x), index === 0 ? -.265 : .265,
+      ).setY(.74));
       kissPose.current = kiss.mode === 'kiss' ? ease((t - 1.5) / .6) * (1 - ease((t - 4.2) / .5)) : 0;
       photoPose.current = kiss.mode === 'photo' ? ease((t - 1) / .8) * (1 - retreat) : 0;
       velocity.current.set(0, 0, 0); companionVelocity.current.set(0, 0, 0);
@@ -121,8 +127,8 @@ export default function Character({ controls, cameraState, charPos, companionPos
     companionPos.copy(companion.current.position);
   }, -1);
   return <>
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi variant="rose" poseSide={-1} motion={motion} kissPose={kissPose} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi variant="lavender" poseSide={1} motion={companionMotion} kissPose={kissPose} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi variant="rose" poseSide={-1} motion={motion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi variant="lavender" poseSide={1} motion={companionMotion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

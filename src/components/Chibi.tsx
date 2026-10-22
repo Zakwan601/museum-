@@ -59,14 +59,15 @@ function strand(points: number[][], width: number) {
   g.computeVertexNormals(); return g;
 }
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; kissPose?: MutableRefObject<number>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ variant, motion, kissPose, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ variant, motion, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Group>(null), rightLeg = useRef<THREE.Group>(null);
   const phase = useRef(rose ? 1.1 : 0), blend = useRef(0);
   const mouth = useRef<THREE.Mesh>(null);
+  const grip = useMemo(() => ({ target: new THREE.Vector3(), direction: new THREE.Vector3(), rest: new THREE.Vector3(), rotation: new THREE.Quaternion() }), []);
   const materials = useMemo(() => {
     const mat = (color: string, roughness = .6) => new THREE.MeshStandardMaterial({ color, roughness });
     return {
@@ -104,6 +105,8 @@ export default function Chibi({ variant, motion, kissPose, photoPose, reducedMot
     phase.current += dt * Math.min(motion.current, 5) * 5.5;
     const swing = Math.sin(phase.current) * .48 * blend.current;
     if (leftArm.current && rightArm.current && leftLeg.current && rightLeg.current) {
+      leftArm.current.scale.set(1, 1, 1); rightArm.current.scale.set(1, 1, 1);
+      leftArm.current.rotation.y = 0; rightArm.current.rotation.y = 0;
       leftArm.current.rotation.x = swing - affection * .65; rightArm.current.rotation.x = -swing - affection * .65;
       leftArm.current.rotation.z = .12 + Math.sin(time * 1.7) * .035;
       rightArm.current.rotation.z = -.12 - Math.sin(time * 1.7) * .035;
@@ -121,6 +124,25 @@ export default function Chibi({ variant, motion, kissPose, photoPose, reducedMot
     }
     if (eyes.current) { const blink = time % 4.7; eyes.current.scale.y = (blink < .14 ? Math.max(.08, Math.abs(blink - .07) / .07) : 1) * (1 - affection * .9); }
     if (mouth.current) { mouth.current.scale.set(1 - affection * .65, 1 + affection * .3, 1); mouth.current.position.z = .332 + affection * .045; }
+    if (affection > 0 && kissHands && root.current) {
+      // Solve the actual hand endpoint after idle motion and height scaling.
+      // Opposite-facing partners use opposite local arms for each grip point.
+      root.current.updateWorldMatrix(true, false);
+      for (const side of [-1, 1]) {
+        const arm = side < 0 ? leftArm.current : rightArm.current;
+        if (!arm) continue;
+        const index = (rose ? side < 0 : side > 0) ? 0 : 1;
+        grip.target.copy(kissHands.current[index]);
+        root.current.worldToLocal(grip.target);
+        grip.target.z -= .025;
+        grip.direction.copy(grip.target).sub(arm.position);
+        const reach = Math.sqrt(Math.max(.01, grip.direction.lengthSq() - .04 ** 2 - .015 ** 2)) / .31;
+        arm.scale.y = THREE.MathUtils.lerp(1, reach, affection);
+        grip.rest.set(side * .04, -.31 * reach, .015).normalize();
+        grip.rotation.setFromUnitVectors(grip.rest, grip.direction.normalize());
+        arm.quaternion.slerp(grip.rotation, affection);
+      }
+    }
   });
   const pebble = (key: string, position: [number, number, number], scale: [number, number, number], material: THREE.Material, smooth = false) =>
     <mesh key={key} geometry={smooth ? round : soft} material={material} position={position} scale={scale} castShadow={!smooth && Math.max(...scale) > .1} />;
@@ -147,7 +169,7 @@ export default function Chibi({ variant, motion, kissPose, photoPose, reducedMot
         {[.79, .7].map(y => pebble(`button${y}`, [0, y, .216], [.009, .009, .005], materials.white, true))}
         {[-1, 1].map(side => <mesh key={side} geometry={collar} material={materials.outfit} scale={[side, 1, 1]} position={[0, 0, .205]} />)}
       </>}
-      {[-1, 1].map(side => <group key={side} ref={side < 0 ? leftArm : rightArm} position={[side * .245, .86, 0]}>
+      {[-1, 1].map(side => <group key={side} name={side < 0 ? 'left-arm' : 'right-arm'} ref={side < 0 ? leftArm : rightArm} position={[side * .245, .86, 0]}>
         {pebble('sleeve', [side * .035, rose ? -.13 : -.085, 0], [.095, rose ? .17 : .115, .1], materials.outfit)}
         {pebble('cuff', [side * .04, rose ? -.255 : -.18, .005], [.084, .018, .09], materials.seam)}
         {!rose && pebble('forearm', [side * .04, -.235, .005], [.062, .088, .062], materials.skin)}

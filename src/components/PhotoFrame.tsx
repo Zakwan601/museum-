@@ -89,7 +89,7 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
   });
 
   return (
-    <group position={photo.position} rotation={photo.rotation} userData={{ interactivePhoto: true }}
+    <group position={photo.position} rotation={photo.rotation} scale={photo.scale ?? 1} userData={{ interactivePhoto: true }}
       onPointerDown={event => { if (event.pointerType === 'touch') touchStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; }}
       onPointerCancel={() => { touchStart.current = null; }}
       onPointerUp={event => {
@@ -100,7 +100,7 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
         }
       }}
       onClick={() => { if (performance.now() - lastTouchTap.current > 500) onClick(); }}>
-      {(!compact || nearby) && <spotLight
+      {((!compact && !photo.roomIndex) || nearby) && <spotLight
         ref={spotRef}
         position={[0, 2, 0.3]}
         angle={0.45}

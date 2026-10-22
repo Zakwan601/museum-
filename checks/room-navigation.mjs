@@ -27,7 +27,11 @@ try {
   for (const mobile of [false, true]) {
     await call('Emulation.setDeviceMetricsOverride', { width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: mobile ? 2 : 1, mobile });
     await call('Emulation.setTouchEmulationEnabled', { enabled: mobile, maxTouchPoints: 5 });
-    await call('Page.reload'); await wait(1800);
+    await call('Page.reload');await wait(700);
+    for(let i=0;i<60&&!await evaluate('!!document.querySelector(".intro-star")');i++)await wait(200);
+    await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);
+    await evaluate('document.querySelector(".intro-star").click()');await wait(200);await evaluate('document.querySelector(".intro-enter").click()');await wait(1800);
+    await call('Emulation.setEmulatedMedia',{features:[]});
     await evaluate(`(async()=>{
       const fiber=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('@react-three_fiber.js')).name);
       let root;for(let i=0;i<100&&!(root=fiber._roots.get(document.querySelector('canvas')));i++)await new Promise(r=>setTimeout(r,100));

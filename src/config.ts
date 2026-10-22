@@ -29,6 +29,8 @@ export const CAMERA = {
 
 export interface PhotoConfig {
   id: string;
+  roomIndex?: number;
+  scale?: number;
   url: string;
   title: string;
   caption: string;
@@ -38,7 +40,7 @@ export interface PhotoConfig {
   lightPosition: [number, number, number];
 }
 
-export const PHOTOS: PhotoConfig[] = [
+const SCHOOL_PHOTOS: PhotoConfig[] = [
   {
     id: 'dance',
     url: 'https://images.pexels.com/photos/32059122/pexels-photo-32059122.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
@@ -90,6 +92,22 @@ export const PHOTOS: PhotoConfig[] = [
     lightPosition: [8.5, 2.2, -4.55],
   },
 ];
+
+// Reuse the existing sample images until personal college/university memories are supplied.
+const collegePhotos: PhotoConfig[] = [
+  [-4.3, -6.85], [4.3, -6.85], [-4.3, 6.85], [4.3, 6.85],
+].map(([x, z], index) => ({ ...SCHOOL_PHOTOS[index], id: `college-${index}`, roomIndex: 1,
+  position: [22 + x, 2.2, z], rotation: [0, z > 0 ? Math.PI : 0, 0], lightPosition: [22 + x, 3.5, z > 0 ? 5.5 : -5.5],
+}));
+const universityPhotos: PhotoConfig[] = [
+  [-5.4, -6.85], [0, -6.85], [5.4, -6.85], [-4.3, 6.85], [4.3, 6.85],
+].map(([x, z], index) => ({ ...SCHOOL_PHOTOS[index], id: `university-${index}`, roomIndex: 2, scale: index === 1 ? 1.4 : 1.12,
+  position: [44 + x, 2.2, z], rotation: [0, z > 0 ? Math.PI : 0, 0], lightPosition: [44 + x, 3.5, z > 0 ? 5.5 : -5.5],
+}));
+const onwardPortrait: PhotoConfig = { ...SCHOOL_PHOTOS[4], id: 'university-onward', roomIndex: 2, scale: 1.3,
+  position: [53.85, 2.2, -4.55], rotation: [0, -Math.PI / 2, 0], lightPosition: [52.5, 3.5, -4.55],
+};
+export const PHOTOS: PhotoConfig[] = [...SCHOOL_PHOTOS, ...collegePhotos, ...universityPhotos, onwardPortrait];
 
 export const MUSIC = {
   url: '',

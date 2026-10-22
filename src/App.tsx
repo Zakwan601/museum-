@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Camera, Heart, Menu, X, ArrowUpRight } from 'lucide-react';
 import * as THREE from 'three';
@@ -13,8 +13,10 @@ import type { PhotoConfig } from './config';
 import { createKissState } from './lib/kiss';
 import { MUSEUM_ROOMS } from './lib/museumLayout';
 import ImmersiveMode from './components/ImmersiveMode';
+import Intro from './components/Intro';
 
 export default function App() {
+  const [entered, setEntered] = useState(false);
   const museumElement = useRef<HTMLDivElement>(null);
   const controls = useMemo(createControlState, []);
   const cameraState = useMemo(createCameraState, []);
@@ -35,13 +37,13 @@ export default function App() {
   useKeyboardControls(controls);
 
   useEffect(() => {
-    controls.paused = Boolean(selectedPhoto) || menuOpen;
+    controls.paused = !entered || Boolean(selectedPhoto) || menuOpen;
     cameraState.inputLocked = controls.paused;
     if (controls.paused) {
       controls.keyboardX = controls.keyboardY = controls.joystickX = controls.joystickY = 0;
     }
     return () => { controls.paused = false; cameraState.inputLocked = false; };
-  }, [selectedPhoto, menuOpen, controls, cameraState]);
+  }, [entered, selectedPhoto, menuOpen, controls, cameraState]);
   useEffect(() => {
     if (!showHint) return;
     const timer = window.setTimeout(() => setShowHint(false), 5000);
@@ -65,8 +67,9 @@ export default function App() {
     kiss.returning = true; setPoseReturning(true);
   };
   const blocked = Boolean(selectedPhoto) || menuOpen || isKissing;
+  if (!entered) return <Intro onEnter={() => setEntered(true)} reducedMotion={settings.reducedMotion} />;
   return (
-    <div ref={museumElement} className="museum-app">
+    <div ref={museumElement} className="museum-app museum-arrival">
       <Canvas
         shadows={!batterySaver}
         camera={initialCamera}

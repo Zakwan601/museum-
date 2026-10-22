@@ -7,6 +7,11 @@ export const MUSEUM_ROOMS = ['School Days', 'College Days', 'University Life', '
 export type MuseumRoom = (typeof MUSEUM_ROOMS)[number];
 export const MUSEUM_BOUNDS = { minX: -ROOM.width / 2, maxX: MUSEUM_ROOMS[3].centerX + ROOM.width / 2, minZ: -ROOM.depth / 2, maxZ: ROOM.depth / 2 };
 export interface MuseumWall { id: string; position: [number, number, number]; size: [number, number, number] }
+// Low furniture stays outside the central doorway-to-doorway walking route.
+export const MUSEUM_FURNITURE: MuseumWall[] = [22, 44].flatMap((x, i) => [
+  { id: `gallery-bench-${i}`, position: [x, .44, 3.2] as [number, number, number], size: [3.2, .88, 1.05] as [number, number, number] },
+  ...[-1, 1].map(side => ({ id: `gallery-flowers-${i}-${side}`, position: [x + side * 7.5, .55, -5.0] as [number, number, number], size: [.6, 1.1, .6] as [number, number, number] })),
+]);
 
 // The rendered walls and collision boxes come from one layout.
 export const MUSEUM_WALLS: MuseumWall[] = [];
@@ -28,6 +33,7 @@ for (const room of MUSEUM_ROOMS) {
     for (const side of [-1, 1]) wall(`${room.id}-passage-${side}`, x, side * PASSAGE.width / 2, PASSAGE.length, ROOM.wallThickness);
   }
 }
+const collisionSolids = [...MUSEUM_WALLS, ...MUSEUM_FURNITURE];
 export function museumRoomAt(x: number): MuseumRoom {
   const index = Math.max(0, Math.min(MUSEUM_ROOMS.length - 1, Math.round(x / (ROOM.width + PASSAGE.length))));
   return MUSEUM_ROOMS[index];
@@ -46,7 +52,7 @@ export function constrainMuseumPosition(position: { x: number; z: number }, radi
     }
   }
   // Multiple passes settle the circle at adjoining doorway and corridor corners.
-  for (let pass = 0; pass < 3; pass++) for (const box of MUSEUM_WALLS) {
+  for (let pass = 0; pass < 3; pass++) for (const box of collisionSolids) {
     const minX = box.position[0] - box.size[0] / 2, maxX = box.position[0] + box.size[0] / 2;
     const minZ = box.position[2] - box.size[2] / 2, maxZ = box.position[2] + box.size[2] / 2;
     const nearestX = Math.max(minX, Math.min(maxX, position.x)), nearestZ = Math.max(minZ, Math.min(maxZ, position.z));
