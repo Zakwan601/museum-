@@ -34,7 +34,7 @@ if(!sample.active)break;
 const elapsed=Date.now()-started;assert.ok(elapsed>=2300&&elapsed<3400,`transition takes about 2.6 seconds (observed ${elapsed}ms)`);assert.ok(relocated);assert.equal(sparkles,particles);
 assert.ok(await ev('document.querySelector("canvas")===originalCanvas&&visitMarker===12345'),'scene/page not reset');
 assert.ok(await ev(`actors.every(a=>Math.abs(a.position.x-${to*22})<9)`),'both characters arrive in destination');
-const label=await ev('document.querySelector(".museum-location").innerText');assert.ok(label.includes(['School Days','College Days','University Life','Future'][to]));
+const label=await ev('document.querySelector(".museum-location").innerText');assert.ok(label.includes(['School Days','College Days','University Life','Our Little Universe'][to]));
 if(to===3){for(let i=0;i<135&&await ev('!!document.querySelector(".bouquet-caption")');i++)await wait(100);}
 assert.ok(await ev('!document.querySelector(".museum-joystick").classList.contains("invisible")'),'controls restored');
 console.log('PASS portal '+from+' -> '+to+': '+elapsed+'ms, together, opaque swap, particles='+particles);
@@ -46,11 +46,10 @@ await boot(mobile);await click('button[aria-label="Play music"]');
 await ev('actors[0].position.set(8.7,0,0);actors[1].position.set(1,0,0)');await wait(100);assert.equal(await ev('!!document.querySelector(".room-transition-overlay.is-active")'),false,'wait for both characters');
 // Leave the threshold while the companion catches up, then walk into every arch.
 await ev('actors[0].position.set(6,0,0);actors[1].position.set(6,0,-1.05)');
-for(const [from,to] of [[0,1],[1,2],[2,3],[3,2],[2,1],[1,0]])await travel(from,to);
-assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'),'collected bouquet survives return trips');
+for(const [from,to] of [[0,1],[1,2],[2,1],[1,0]])await travel(from,to);
 assert.ok(await ev('!!document.querySelector(`button[aria-label="Pause music"]`)'),'music state survives');
 const before=await ev('actors[0].position.toArray()');await key('w',true);await wait(500);await key('w',false);await wait(150);assert.ok(await ev(`actors[0].position.distanceTo(new T.Vector3(...${JSON.stringify(before)}))`)>.5);
-console.log('PASS '+(mobile?'mobile':'desktop')+' full route both ways, automatic walking, progress and controls');
+console.log('PASS '+(mobile?'mobile':'desktop')+' indoor route both ways, automatic walking, progress and controls');
 }
 await click('button[aria-label="Open museum menu"]');await ev('document.querySelector(".menu-setting input").click()');await click('button[aria-label="Close museum menu"]');await travel(0,1,false);
 await click('button[aria-label="Open museum menu"]');await ev('document.querySelector(".menu-setting input").click()');await click('button[aria-label="Close museum menu"]');

@@ -1,3 +1,5 @@
+import { endingFrozen } from '../lib/ending';
+import type { EndingState } from '../lib/ending';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -10,8 +12,8 @@ import { ease } from '../lib/kiss';
 import type { KissState } from '../lib/kiss';
 import { constrainMuseumPosition, museumRoomAt, PASSAGE, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
-export default function Character({ transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
+interface Props { ending: EndingState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
+export default function Character({ ending, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
   const group = useRef<THREE.Group>(null), companion = useRef<THREE.Group>(null);
   const velocity = useRef(new THREE.Vector3()), follow = useRef(new THREE.Vector3());
   const motion = useRef(0), companionMotion = useRef(0), heading = useRef(0);
@@ -45,6 +47,7 @@ export default function Character({ transition, controls, cameraState, charPos, 
       motion.current = companionMotion.current = 0;
       charPos.copy(group.current.position); companionPos.copy(companion.current.position);
     }
+    if (endingFrozen(ending)) return;
     receiver.current.amount = giver.current.amount = 0; bouquet.current.visible = false;
     if (kiss.active) {
       const state = saved.current;
@@ -178,8 +181,8 @@ export default function Character({ transition, controls, cameraState, charPos, 
   }, -1);
   return <>
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi variant="rose" giftGrip={receiver} poseSide={-1} motion={motion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi variant="lavender" giftGrip={giver} poseSide={1} motion={companionMotion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" giftGrip={receiver} poseSide={-1} motion={motion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi ending={ending} variant="lavender" giftGrip={giver} poseSide={1} motion={companionMotion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

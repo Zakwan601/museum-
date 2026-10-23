@@ -43,7 +43,7 @@ function ArchedDoor({ x, roomId }: { x: number; roomId: string }) {
 }
 export default function RoomStructure() {
   return <group name="museum-structure">
-    {MUSEUM_ROOMS.map(room => <group key={room.id} name={`room-${room.id}`} position={[room.centerX, 0, 0]}>
+    {MUSEUM_ROOMS.slice(0, 3).map(room => <group key={room.id} name={`room-${room.id}`} position={[room.centerX, 0, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[ROOM.width, ROOM.depth]} /><meshStandardMaterial color={structureColors(room.id).floor} roughness={.8} /></mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM.height, 0]}><planeGeometry args={[ROOM.width, ROOM.depth]} /><meshStandardMaterial color={structureColors(room.id).ceiling} side={THREE.DoubleSide} /></mesh>
     </group>)}
@@ -54,7 +54,7 @@ export default function RoomStructure() {
     {MUSEUM_WALLS.map(wall => <mesh key={wall.id} name={wall.id} position={wall.position} userData={{ cameraObstacle: true }} receiveShadow>
       <boxGeometry args={wall.size} /><meshStandardMaterial color={structureColors(wall.id).wall} roughness={.92} />
     </mesh>)}
-    {MUSEUM_ROOMS.map(room => <group key={`signs-${room.id}`}>
+    {MUSEUM_ROOMS.slice(0, 3).map(room => <group key={`signs-${room.id}`}>
       {room.index < MUSEUM_ROOMS.length - 1 && <ArchedDoor x={room.centerX + ROOM.width / 2} roomId={room.id} />}
       {room.index > 0 && <ArchedDoor x={room.centerX - ROOM.width / 2} roomId={room.id} />}
       {room.index < MUSEUM_ROOMS.length - 1 && <DoorLabel name={MUSEUM_ROOMS[room.index + 1].name} x={room.centerX + ROOM.width / 2 - .18} direction={1} />}

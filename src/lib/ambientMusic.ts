@@ -4,6 +4,7 @@ export class AmbientMusic {
   private oscillators: OscillatorNode[] = [];
   private lfos: OscillatorNode[] = [];
   private _isPlaying = false;
+  private softened = false;
 
   get isPlaying(): boolean {
     return this._isPlaying;
@@ -67,7 +68,7 @@ export class AmbientMusic {
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-    this.masterGain.gain.linearRampToValueAtTime(0.22, now + 3);
+    this.masterGain.gain.linearRampToValueAtTime(this.softened ? 0.09 : 0.22, now + 3);
   }
 
   pause() {
@@ -77,6 +78,15 @@ export class AmbientMusic {
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
     this.masterGain.gain.linearRampToValueAtTime(0, now + 1.5);
+  }
+
+  soften(softened: boolean) {
+    this.softened = softened;
+    if (!this.ctx || !this.masterGain || !this._isPlaying) return;
+    const now = this.ctx.currentTime;
+    this.masterGain.gain.cancelScheduledValues(now);
+    this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+    this.masterGain.gain.linearRampToValueAtTime(softened ? .09 : .22, now + 3);
   }
 
   toggle() {

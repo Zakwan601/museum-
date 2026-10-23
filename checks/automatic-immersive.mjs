@@ -14,8 +14,8 @@ await ev(`window.requests=0;window.lockCalls=0;window.requestTarget=document.que
 await click('.intro-enter');await wait(1800);
 assert.ok(await ev('document.fullscreenElement===requestTarget'));assert.equal(await ev('requests'),1);assert.equal(await ev('activationAtRequest'),true);assert.equal(await ev('lockCalls'),1);assert.equal(await ev('lockMode'),'landscape');assert.ok(await ev('!!document.querySelector("canvas")'));assert.equal(await ev('!!document.querySelector(".immersive-entry")'),false);
 await click('.immersive-exit');await wait(250);assert.equal(await ev('!!document.fullscreenElement'),false);
-await click('button[aria-label="Open museum menu"]');assert.ok(await ev('document.querySelector(".room-route").innerText.includes("Future")'));assert.equal(await ev('document.querySelector(".room-route").innerText.includes("Outro")'),false);await click('button[aria-label="Close museum menu"]');
-console.log('PASS native mobile fullscreen from entry tap, user activation, landscape request, stable root, exit and Future menu');
+await click('button[aria-label="Open museum menu"]');assert.ok(await ev('document.querySelector(".room-route").innerText.includes("Our Little Universe")'));assert.equal(await ev('document.querySelector(".room-route").innerText.includes("Outro")'),false);await click('button[aria-label="Close museum menu"]');
+console.log('PASS native mobile fullscreen from entry tap, user activation, landscape request, stable root, exit and Our Little Universe menu');
 await reload(true);
 await ev(`window.requests=0;document.querySelector('.museum-app').requestFullscreen=()=>{requests++;return Promise.reject(new DOMException('Denied','NotAllowedError'))}`);await click('.intro-enter');await wait(1800);
 assert.equal(await ev('requests'),1);assert.equal(await ev('!!document.fullscreenElement'),false);assert.ok(await ev('document.querySelector(".immersive-message").innerText.includes("could not start")'));assert.ok(await ev('!!document.querySelector("canvas")'));assert.ok(await ev('!!document.querySelector(".immersive-entry")'));
@@ -23,6 +23,6 @@ console.log('PASS denied automatic request: museum opens, honest fallback and op
 await reload(true);await ev(`document.querySelector('.museum-app').requestFullscreen=undefined`);await click('.intro-enter');await wait(1800);assert.ok(await ev('document.querySelector(".immersive-message").innerText.includes("unavailable")'));assert.ok(await ev('!!document.querySelector("canvas")'));
 console.log('PASS unsupported mobile fullscreen still opens museum');
 await reload(false);await ev(`window.requests=0;document.querySelector('.museum-app').requestFullscreen=()=>{requests++;throw Error('Desktop must not request fullscreen')}`);await click('.intro-enter');await wait(1800);assert.equal(await ev('requests'),0);assert.equal(await ev('!!document.querySelector(".immersive-entry")'),false);await setup();
-await ev('actors[0].position.set(66,0,0);actors[1].position.set(67.05,0,-.3)');await wait(300);assert.ok(await ev('document.querySelector(".museum-location").innerText.includes("Future")'));
-assert.deepEqual(errors,[]);console.log('PASS desktop unchanged, Future room label, no runtime exceptions');
+await ev('actors[0].position.set(66,0,0);actors[1].position.set(67.05,0,-.3)');await wait(300);assert.ok(await ev('document.querySelector(".museum-location").innerText.includes("Our Little Universe")'));
+assert.deepEqual(errors,[]);console.log('PASS desktop unchanged, Our Little Universe room label, no runtime exceptions');
 }finally{await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

@@ -26,12 +26,12 @@ await wait(2900);assert.ok((await ev('handDistance(actors[0])')).every(d=>d<.065
 shot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('../bouquet-received-'+(mobile?'mobile':'desktop')+'.png',Buffer.from(shot.result.data,'base64'));
 if(mobile){await call('Emulation.setDeviceMetricsOverride',{width:844,height:390,deviceScaleFactor:1,mobile:true});await wait(500);assert.equal(await ev('document.documentElement.scrollWidth>innerWidth'),false);}
 for(let i=0;i<65&&await ev('!!document.querySelector(".bouquet-caption")');i++)await wait(100);
-assert.equal(await ev('!!document.querySelector(".bouquet-caption")'),false,'cinematic completes');assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'),'girl keeps bouquet');assert.ok(await ev('!document.querySelector(`button[aria-label="Open museum menu"]`).disabled'));
-const before=await ev('actors[0].position.toArray()');await key('w',true);await wait(550);await key('w',false);await wait(200);assert.ok(await ev(`actors[0].position.distanceTo(new T.Vector3(...${JSON.stringify(before)}))`)>.5,'walking restored');assert.ok((await ev('handDistance(actors[0])')).every(d=>d<.065),'bouquet stays in moving hands');
-await ev('actors[0].position.set(44,0,0);actors[1].position.set(45.05,0,-.3)');await wait(250);await ev('actors[0].position.set(66,0,0);actors[1].position.set(67.05,0,-.3)');await wait(700);assert.equal(await ev('!!document.querySelector(".bouquet-caption")'),false,'no repeat on reentry');
-console.log('PASS '+(mobile?'mobile portrait/landscape':'desktop')+' auto entry, both grips, completion, keepsake, movement and once-only reentry');
+assert.equal(await ev('!!document.querySelector(".bouquet-caption")'),false,'cinematic completes');assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'),'girl keeps bouquet');
+for(let i=0;i<80&&!await ev('!!document.querySelector(".ending-message")');i++)await wait(100);
+assert.ok(await ev('!!document.querySelector(".ending-message")'));
+const pose=await ev('actors.map(a=>[...a.position.toArray(),...a.quaternion.toArray()])');await key('w',true);await wait(550);await key('w',false);assert.deepEqual(await ev('actors.map(a=>[...a.position.toArray(),...a.quaternion.toArray()])'),pose,'final poses stay still');
+assert.ok((await ev('handDistance(actors[0])')).every(d=>d<.065),'bouquet stays in frozen hands');
+console.log('PASS '+(mobile?'mobile portrait/landscape':'desktop')+' auto entry, both grips, completion, frozen keepsake and ending');
 }
-await click('button[aria-label="Pose together for a photo"]');await wait(2600);assert.ok(await ev('!!document.querySelector(`button[aria-label="Return to walking"]`)'));await click('button[aria-label="Return to walking"]');await wait(4300);assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'));
-await click('button[aria-label="Share a kiss"]');await wait(2600);assert.ok(await ev('document.querySelector(`button[aria-label="Share a kiss"]`).disabled'));await wait(6200);assert.ok(await ev('!document.querySelector(`button[aria-label="Share a kiss"]`).disabled'));assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'));
-assert.deepEqual(errors,[]);console.log('PASS existing photo pose and kiss restore carrying, no runtime exceptions');
+assert.deepEqual(errors,[]);console.log('PASS preserved bouquet interaction and final poses, no runtime exceptions');
 }finally{await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

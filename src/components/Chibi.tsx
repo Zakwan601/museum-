@@ -1,3 +1,5 @@
+import { endingFrozen } from '../lib/ending';
+import type { EndingState } from '../lib/ending';
 import { useMemo, useRef } from 'react';
 import type { MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -60,8 +62,8 @@ function strand(points: number[][], width: number) {
   g.computeVertexNormals(); return g;
 }
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
@@ -98,6 +100,7 @@ export default function Chibi({ variant, motion, giftGrip, kissPose, kissHands, 
     });
   }, [rose]);
   useFrame(({ clock }, delta) => {
+    if (ending && endingFrozen(ending)) { if (eyes.current) eyes.current.scale.y = 1; return; }
     const dt = Math.min(delta, .05), time = clock.elapsedTime + (rose ? 1.3 : 0);
     const affection = kissPose?.current ?? 0;
     const posing = photoPose?.current ?? 0;

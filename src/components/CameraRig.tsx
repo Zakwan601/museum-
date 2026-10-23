@@ -1,3 +1,5 @@
+import { endingFrozen, endingView, ENDING_PULLBACK_SECONDS } from '../lib/ending';
+import type { EndingState, EndingPhase } from '../lib/ending';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -9,8 +11,8 @@ import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 import { MUSEUM_BOUNDS, cameraWallDistance, constrainMuseumPosition, museumRoomAt } from '../lib/museumLayout';
 
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
-export default function CameraRig({ transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
+interface Props { ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
+export default function CameraRig({ ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
   const { camera, gl, scene } = useThree();
   const dragPointerId = useRef<number | null>(null);
   const last = useRef({ x: 0, y: 0, distance: 0, interactive: false });
@@ -21,6 +23,7 @@ export default function CameraRig({ transition, cameraState, charPos, companionP
   const obstacles = useRef<THREE.Object3D[]>([]), intersections = useRef<THREE.Intersection[]>([]);
   const orbitDistance = useRef(settings.distance);
   const lastRelocation = useRef(0);
+  const finalAspect = useRef(0);
   const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
   const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
   const shotTarget = useMemo(() => new THREE.Vector3(), []);
@@ -89,6 +92,28 @@ export default function CameraRig({ transition, cameraState, charPos, companionP
   }, -2);
 
   useFrame((_, frameDelta) => {
+    const perspectiveCamera = camera as THREE.PerspectiveCamera;
+    if (ending.phase !== 'exploring') {
+      if (perspectiveCamera.far !== 180) { perspectiveCamera.far = 180; perspectiveCamera.updateProjectionMatrix(); }
+    }
+    if (endingFrozen(ending)) {
+      // Capture once. After the reveal, no orbit, damping or idle camera work runs.
+      if (!ending.cameraCaptured) {
+        ending.cameraCaptured = true; ending.cameraPosition.copy(camera.position); ending.cameraRotation.copy(camera.quaternion); ending.cameraFov = perspectiveCamera.fov;
+      }
+      if (ending.phase === 'complete' && finalAspect.current === perspectiveCamera.aspect) return;
+      const center = target.copy(charPos).add(companionPos).multiplyScalar(.5);
+      const view = endingView(perspectiveCamera.aspect || 1, center);
+      const duration = settings.reducedMotion ? .8 : ENDING_PULLBACK_SECONDS;
+      const t = ending.phase === 'complete' ? 1 : ease((performance.now() - ending.startedAt) / (duration * 1000));
+      camera.position.lerpVectors(ending.cameraPosition, view.position, t);
+      shot.position.copy(view.position); shot.lookAt(view.target);
+      camera.quaternion.slerpQuaternions(ending.cameraRotation, shot.quaternion, t);
+      perspectiveCamera.fov = THREE.MathUtils.lerp(ending.cameraFov, view.fov, t); perspectiveCamera.updateProjectionMatrix();
+      finalAspect.current = perspectiveCamera.aspect;
+      if (t === 1 && ending.phase !== 'complete') { ending.phase = 'complete'; onEndingChange('complete'); }
+      return;
+    }
     const dt = Math.min(frameDelta, .05), p = profile.current;
     if (lastRelocation.current !== transition.relocation) {
       lastRelocation.current = transition.relocation; anchor.current.copy(charPos);

@@ -2,7 +2,7 @@ import { CHARACTER, ROOM } from '../config';
 import { BOOKSHELF } from './books';
 
 export const PASSAGE = { length: 2, width: 4.2 };
-export const MUSEUM_ROOMS = ['School Days', 'College Days', 'University Life', 'Future'].map((name, index) => ({
+export const MUSEUM_ROOMS = ['School Days', 'College Days', 'University Life', 'Our Little Universe'].map((name, index) => ({
   id: ['school', 'college', 'university', 'outro'][index], name, index, centerX: index * (ROOM.width + PASSAGE.length),
 }));
 export type MuseumRoom = (typeof MUSEUM_ROOMS)[number];
@@ -21,7 +21,7 @@ export const MUSEUM_WALLS: MuseumWall[] = [];
 const wall = (id: string, x: number, z: number, width: number, depth: number) => {
   MUSEUM_WALLS.push({ id, position: [x, ROOM.height / 2, z], size: [width, ROOM.height, depth] });
 };
-for (const room of MUSEUM_ROOMS) {
+for (const room of MUSEUM_ROOMS.slice(0, 3)) {
   for (const side of [-1, 1]) {
     wall(`${room.id}-end-${side}`, room.centerX, side * ROOM.depth / 2, ROOM.width, ROOM.wallThickness);
     const hasDoor = side === -1 ? room.index > 0 : room.index < MUSEUM_ROOMS.length - 1;

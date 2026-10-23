@@ -1,3 +1,5 @@
+import LittleUniverse from './LittleUniverse';
+import type { EndingState, EndingPhase } from '../lib/ending';
 import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -25,6 +27,9 @@ import type { MuseumRoom } from '../lib/museumLayout';
 const EXHIBITS = [...PHOTOS, ...BOOKS];
 
 interface Props {
+  ending: EndingState;
+  memories: PhotoConfig[];
+  onEndingChange: (phase: EndingPhase) => void;
   transition: RoomTransitionState;
   simpleTransitions: boolean;
   onPortalEnter: (portal: RoomPortal) => void;
@@ -41,7 +46,7 @@ interface Props {
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
+export default function Scene({ ending, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(1.05, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
@@ -81,6 +86,10 @@ export default function Scene({ transition, simpleTransitions, onPortalEnter, on
     kiss.elapsed = Math.min(limit, kiss.elapsed + Math.min(delta, .05));
     if (kiss.elapsed >= duration) {
       kiss.active = false;
+      if (kiss.mode === 'bouquet' && futureWelcomePlayed.current) {
+        ending.phase = 'pullback'; ending.startedAt = performance.now(); ending.cameraCaptured = false;
+        onEndingChange('pullback');
+      }
       onKissComplete();
     }
   }, -3);
@@ -93,11 +102,11 @@ export default function Scene({ transition, simpleTransitions, onPortalEnter, on
       setActiveRoomIndex(room.index);
     }
     // Wait until both characters have cleared the arch, then play once per visit.
-    if (!futureWelcomePlayed.current && room.index === 3 && charPos.x > room.centerX - ROOM.width / 2 + .35 && companionPos.x > room.centerX - ROOM.width / 2 + .35 && !kiss.active && !transition.active && !controls.paused) {
+    if (!futureWelcomePlayed.current && room.index === 3 && charPos.x > room.centerX - ROOM.width / 2 + .35 && companionPos.x > room.centerX - ROOM.width / 2 + .35 && !kiss.active && !transition.active) {
       futureWelcomePlayed.current = onBouquetStart();
     }
     let portal: RoomPortal | null = null;
-    if (!transition.active && !kiss.active && transition.cooldown === 0) {
+    if (room.index < 3 && ending.phase === 'exploring' && !transition.active && !kiss.active && transition.cooldown === 0) {
       portal = ROOM_PORTALS.find(p => p.from === room.index && Math.abs(charPos.z) < 1.8 && Math.abs(companionPos.z) < 1.8 &&
         Math.hypot(charPos.x - p.x, charPos.z) < (lastPortalId.current === p.id ? 3.8 : 3.4) &&
         Math.hypot(companionPos.x - p.x, companionPos.z) < (lastPortalId.current === p.id ? 3.8 : 3.4)) ?? null;
@@ -130,16 +139,19 @@ export default function Scene({ transition, simpleTransitions, onPortalEnter, on
 
   return (
     <>
+      <group visible={activeRoomIndex !== 3}>
       <RoomStructure />
-      {ROOM_PORTALS.map(portal => <MagicArchway key={portal.id} portal={portal} transition={transition} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} />)}
+      {ROOM_PORTALS.filter(portal => portal.from < 3).map(portal => <MagicArchway key={portal.id} portal={portal} transition={transition} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} />)}
       <Gallery settings={settings} charPos={charPos} />
       <Bookshelf charPos={charPos} compact={settings.compact} nearbyId={!kiss.active ? nearbyPhoto?.id ?? null : null} onOpen={book => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(book); }} />
       <IndoorGalleries compact={settings.compact} activeRoomIndex={activeRoomIndex} />
       {PHOTOS.map((photo) => (
         <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}
-      <Character transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
-      <CameraRig transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
+      </group>
+      {activeRoomIndex === 3 && <LittleUniverse ending={ending} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
+      <Character ending={ending} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      <CameraRig ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );
 }
