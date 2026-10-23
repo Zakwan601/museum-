@@ -10,11 +10,13 @@ try {
 await call('Runtime.enable');
 for(const mobile of [false,true]) {
 await boot(mobile);
-// Enter Future through the consent-based magical arches.
+// Walk into each magical arch to enter Future automatically.
 for(const from of [0,1,2]) {
   const x=from*22+7.8;await ev(`actors[0].position.set(${x},0,0);actors[1].position.set(${x-.35},0,-1.05)`);
-  for(let i=0;i<45&&!await ev('!!document.querySelector(".portal-prompt")');i++)await wait(100);
-  await click('.portal-prompt');for(let i=0;i<40&&await ev('!!document.querySelector(".room-transition-overlay.is-active")');i++)await wait(100);
+  await wait(250);await key('d',true);
+  for(let i=0;i<60&&!await ev('!!document.querySelector(".room-transition-overlay.is-active")');i++)await wait(50);
+  await key('d',false);assert.ok(await ev('!!document.querySelector(".room-transition-overlay.is-active")'));
+  for(let i=0;i<40&&await ev('!!document.querySelector(".room-transition-overlay.is-active")');i++)await wait(100);
 }
 for(let i=0;i<20&&!await ev('!!document.querySelector(".bouquet-caption")');i++)await wait(100);
 assert.ok(await ev('!!document.querySelector(".bouquet-caption")'),'automatic first-entry scene');assert.equal(await ev('!!document.querySelector(".museum-actions")'),false);assert.ok(await ev('document.querySelector(`button[aria-label="Open museum menu"]`).disabled'));

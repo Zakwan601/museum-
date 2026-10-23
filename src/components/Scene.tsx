@@ -27,7 +27,7 @@ const EXHIBITS = [...PHOTOS, ...BOOKS];
 interface Props {
   transition: RoomTransitionState;
   simpleTransitions: boolean;
-  onNearbyPortalChange: (portal: RoomPortal | null) => void;
+  onPortalEnter: (portal: RoomPortal) => void;
   onTransitionComplete: () => void;
   controls: ControlState;
   cameraState: CameraState;
@@ -41,7 +41,7 @@ interface Props {
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ transition, simpleTransitions, onNearbyPortalChange, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
+export default function Scene({ transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(1.05, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
@@ -103,7 +103,12 @@ export default function Scene({ transition, simpleTransitions, onNearbyPortalCha
         Math.hypot(companionPos.x - p.x, companionPos.z) < (lastPortalId.current === p.id ? 3.8 : 3.4)) ?? null;
     }
     transition.ready = portal;
-    if ((portal?.id ?? null) !== lastPortalId.current) { lastPortalId.current = portal?.id ?? null; onNearbyPortalChange(portal); }
+    lastPortalId.current = portal?.id ?? null;
+    // Walking into the threshold starts the same cinematic, with no extra tap.
+    // The wider readiness range lets the companion catch up beside the player.
+    if (portal && !controls.paused && Math.abs(charPos.x - portal.x) <= 1.4 && Math.abs(charPos.z) < 1.5) {
+      onPortalEnter(portal);
+    }
     let nearest: PhotoConfig | null = null;
     let nearestDistance = Infinity;
     for (const photo of EXHIBITS) {

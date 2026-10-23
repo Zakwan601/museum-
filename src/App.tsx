@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Camera, Heart, Menu, X, ArrowUpRight, BookOpen, Sparkles } from 'lucide-react';
+import { Camera, Heart, Menu, X, ArrowUpRight, BookOpen } from 'lucide-react';
 import * as THREE from 'three';
 import Scene from './components/Scene';
 import VirtualJoystick from './components/VirtualJoystick';
@@ -29,7 +29,6 @@ export default function App() {
   const kiss = useMemo(createKissState, []);
   const transition = useMemo(createRoomTransition, []);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [nearbyPortal, setNearbyPortal] = useState<RoomPortal | null>(null);
   const viewport = useExperienceSettings();
   const [initialCamera] = useState(() => ({ position: [0, 4, 8] as [number, number, number], fov: viewport.fov, near: .08, far: 40 }));
   const [batterySaver, setBatterySaver] = useState(false);
@@ -73,8 +72,7 @@ export default function App() {
     setShowHint(false); setMenuOpen(false);
     return true;
   };
-  const continueToRoom = () => {
-    const portal = transition.ready;
+  const enterPortal = (portal: RoomPortal) => {
     if (!portal || transition.active || kiss.active || selectedPhoto || menuOpen) return;
     transition.from = portal.from; transition.to = portal.to; transition.direction = portal.direction;
     transition.elapsed = 0; transition.startedAt = performance.now(); transition.transferred = false; transition.sequence += 1; transition.active = true;
@@ -98,7 +96,7 @@ export default function App() {
         dpr={[1, batterySaver ? 1 : settings.dpr]}
       >
         <fog attach="fog" args={['#382234', 16, 32]} />
-        <Scene transition={transition} simpleTransitions={batterySaver} onNearbyPortalChange={setNearbyPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={setSelectedPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
+        <Scene transition={transition} simpleTransitions={batterySaver} onPortalEnter={enterPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={setSelectedPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
       </Canvas>
       <div className="museum-hud">
         <div className="museum-top-left">
@@ -112,7 +110,7 @@ export default function App() {
           <h1 className="text-lg text-rose-100">A little world of us</h1>
           <p className="mt-1 text-xs leading-relaxed text-rose-100/60">Explore our memories, side by side.</p>
           <ol className="room-route" aria-label="Museum rooms">{MUSEUM_ROOMS.map(room => <li key={room.id} aria-current={room.id === currentRoom.id ? 'step' : undefined}>{room.index + 1}. {room.name}</li>)}</ol>
-          <p className="mb-2 text-xs leading-relaxed text-rose-100/60">Approach a glowing arch together, then tap Continue. You can return through the arch behind you.</p>
+          <p className="mb-2 text-xs leading-relaxed text-rose-100/60">Walk through a glowing arch to enter the next room. You can return through the arch behind you.</p>
           <label className="menu-setting"><span>Battery saver</span><input type="checkbox" checked={batterySaver} onChange={e => setBatterySaver(e.target.checked)} /></label>
           <label className="menu-setting"><span>Reduce motion</span><input type="checkbox" checked={settings.reducedMotion} disabled={viewport.reducedMotion} onChange={e => setLessMotion(e.target.checked)} /></label>
           <button type="button" className="menu-setting w-full" onClick={() => { setMenuOpen(false); setShowHint(true); }}>How to explore <span aria-hidden="true">?</span></button>
@@ -122,11 +120,8 @@ export default function App() {
           <span>{settings.compact ? 'Joystick to walk. Drag the room to look.' : 'WASD to walk. Drag the room to look.'}</span>
           <button type="button" aria-label="Dismiss instructions" onClick={() => setShowHint(false)}><X size={16} /></button>
         </div>}
-        {nearbyPhoto && !nearbyPortal && !blocked && <button type="button" className={`photo-prompt ${isBook(nearbyPhoto) ? '' : 'vintage-photo-prompt'}`} onClick={() => setSelectedPhoto(nearbyPhoto)} aria-label={`View ${isBook(nearbyPhoto) ? 'book' : 'photo'}: ${nearbyPhoto.title}`}>
+        {nearbyPhoto && !blocked && <button type="button" className={`photo-prompt ${isBook(nearbyPhoto) ? '' : 'vintage-photo-prompt'}`} onClick={() => setSelectedPhoto(nearbyPhoto)} aria-label={`View ${isBook(nearbyPhoto) ? 'book' : 'photo'}: ${nearbyPhoto.title}`}>
           <span className="min-w-0"><span className="block truncate text-xs text-rose-100/65" lang={isBook(nearbyPhoto) ? 'bn' : undefined} aria-live="polite">{nearbyPhoto.title}</span><span className="block text-sm">Tap to view {isBook(nearbyPhoto) ? 'book' : 'photo'}</span></span>{isBook(nearbyPhoto) ? <BookOpen size={18} aria-hidden="true" /> : <ArrowUpRight size={18} aria-hidden="true" />}
-        </button>}
-        {nearbyPortal && !blocked && <button type="button" className="portal-prompt" onClick={continueToRoom} aria-label={`Continue to ${MUSEUM_ROOMS[nearbyPortal.to].name}`}>
-          <Sparkles size={20} aria-hidden="true" /><span><span className="portal-prompt-detail">The next chapter awaits</span><span>{nearbyPortal.direction > 0 ? 'Continue to' : 'Return to'} {MUSEUM_ROOMS[nearbyPortal.to].name}</span></span><ArrowUpRight size={18} aria-hidden="true" />
         </button>}
         {!selectedPhoto && !menuOpen && !isGivingBouquet && !isTransitioning && <div className="museum-actions">
           {isPosing ? <button type="button" className="hud-button return-button" onClick={finishPhotoPose} disabled={poseReturning} aria-label="Return to walking">{poseReturning ? 'Returning…' : 'Back to walking'}</button> : <>

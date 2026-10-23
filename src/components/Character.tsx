@@ -126,7 +126,7 @@ export default function Character({ transition, controls, cameraState, charPos, 
         if (Math.hypot(p.x - x, p.z - z) < radius - .001) p.x = x + (dx < 0 ? -1 : 1) * Math.sqrt(Math.max(0, radius ** 2 - (p.z - z) ** 2));
       }
       constrainMuseumPosition(p);
-      // The magical threshold is crossed only after the Continue action.
+      // Hold at the magical threshold briefly if the companion needs to catch up.
       if (Math.abs(p.z) < PASSAGE.width / 2) {
         const minX = chamber.index > 0 ? chamber.centerX - ROOM.width / 2 + 1.2 : -Infinity;
         const maxX = chamber.index < MUSEUM_ROOMS.length - 1 ? chamber.centerX + ROOM.width / 2 - 1.2 : Infinity;

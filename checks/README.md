@@ -22,7 +22,7 @@ The route is School Days → College Days → University Life → Future, with r
 Additional checks:
 
 - `node checks/room-layout.mjs`: all three passages in both directions, solid wall sections, passage sides, outer limits, camera clearance, and a grid of doorway/corner collision samples.
-- `node checks/room-navigation.mjs`: both characters approaching each arch, explicit Continue actions, every connection in both directions, room-label updates, hidden relocation, preserved progress and restored controls on desktop and mobile.
+- `node checks/room-navigation.mjs`: both characters approaching each arch, automatic walking transitions, every connection in both directions, room-label updates, hidden relocation, preserved progress and restored controls on desktop and mobile.
 
 Both checks passed in Chrome desktop and 390×844 phone emulation. Existing mobile interaction checks were rerun for photo taps, dragging, modal scrolling, music, settings, and reduced motion.
 
@@ -72,8 +72,8 @@ The welcome runs once per museum session, without a new action button. It waits 
 
 ## Magical room transitions
 
-The six arch faces glow softly with the next gallery's palette. Both characters must approach together before the Continue/Return prompt appears. Walking alone does not cross the threshold. The 2.6-second transition fades the room out while a small burst of instanced point sprites drifts from the arch, moves both characters while the view is fully opaque, then reveals the next gallery and restores input. The camera's orbit heading is retained and its position is updated under the fade. Arrival placement keeps the couple together and clear of walls and furniture.
+The six arch faces glow softly with the next gallery's palette. Walking into an arch automatically starts the transition when both characters are nearby. No Continue/Return button is needed; the threshold waits briefly if the companion needs to catch up. The 2.6-second transition fades the room out while a small burst of instanced point sprites drifts from the arch, moves both characters while the view is fully opaque, then reveals the next gallery and restores input. The camera's orbit heading is retained and its position is updated under the fade. Arrival placement keeps the couple together and clear of walls and furniture.
 
 The same Canvas, scene objects, music player, controls, interaction state and bouquet keepsake survive every transition. Re-entering Future does not replay its welcome. Battery saver and reduced motion use a simple fade without particles; reduced motion also disables the subtle camera push. Particles use 14 points per active arch on mobile and 24 on desktop, without post-processing or simulation libraries. Fade timing uses elapsed real time so slow rendering does not stretch the transition.
 
-`node checks/magical-transitions.mjs` (also available as `node checks/room-navigation.mjs`) checks both-character proximity, explicit choice, opaque relocation, 2.6-second timing, particles, every connection in both directions, desktop/phone controls, music and collected bouquet preservation, and both simple-fade fallbacks.
+`node checks/magical-transitions.mjs` (also available as `node checks/room-navigation.mjs`) checks both-character proximity, automatic threshold entry, opaque relocation, 2.6-second timing, particles, every connection in both directions, desktop/phone controls, music and collected bouquet preservation, and both simple-fade fallbacks.
