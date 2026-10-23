@@ -4,7 +4,8 @@ import ts from 'typescript';
 const compile = text => ts.transpileModule(text, {compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const uri = text => 'data:text/javascript;base64,'+Buffer.from(text).toString('base64');
 const config = uri(compile(fs.readFileSync('src/config.ts','utf8')));
-const source = compile(fs.readFileSync('src/lib/museumLayout.ts','utf8')).replace(/(['"])\.\.\/config\1/g,JSON.stringify(config));
+const books = uri(compile(fs.readFileSync('src/lib/books.ts','utf8')));
+const source = compile(fs.readFileSync('src/lib/museumLayout.ts','utf8')).replace(/(['"])\.\.\/config\1/g,JSON.stringify(config)).replace(/(['"])\.\/books\1/g,JSON.stringify(books));
 const {MUSEUM_ROOMS,MUSEUM_WALLS,MUSEUM_FURNITURE,constrainMuseumPosition,cameraWallDistance,museumRoomAt} = await import(uri(source));
 assert.deepEqual(MUSEUM_ROOMS.map(r=>r.name),['School Days','College Days','University Life','Future']);
 for(const base of [0,22,44]){

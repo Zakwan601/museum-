@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { PhotoConfig } from '../config';
+import { isBook } from '../lib/books';
 interface Props { photo: PhotoConfig; onClose: () => void }
 export default function PhotoModal({ photo, onClose }: Props) {
+  const book = isBook(photo) ? photo : null;
   const dialog = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -22,11 +24,22 @@ export default function PhotoModal({ photo, onClose }: Props) {
     return () => { window.removeEventListener('keydown', key); previous?.focus(); };
   }, [onClose]);
   return <div className="photo-modal-backdrop" onClick={onClose}>
-    <div ref={dialog} className="photo-modal" role="dialog" aria-modal="true" aria-labelledby="photo-title" onClick={e => e.stopPropagation()}>
-      <header className="photo-modal-header"><div className="min-w-0"><h2 id="photo-title" className="text-lg text-rose-100">{photo.title}</h2><p className="mt-1 text-xs text-rose-100/60">{photo.date}</p></div><button ref={close} type="button" className="hud-button" onClick={onClose} aria-label="Close"><X size={22} /></button></header>
+    <div ref={dialog} className={`photo-modal ${book ? 'book-modal' : 'vintage-photo'}`} role="dialog" aria-modal="true" aria-labelledby="photo-title" onClick={e => e.stopPropagation()}>
+      {book ? <header className="photo-modal-header"><div className="min-w-0"><h2 id="photo-title" lang="bn" className="text-lg text-rose-100">{photo.title}</h2><p lang="bn" className="mt-1 text-xs text-rose-100/60">{book.author}</p></div><button ref={close} type="button" className="hud-button" onClick={onClose} aria-label="Close"><X size={22} /></button></header>
+        : <button ref={close} type="button" className="photo-card-close" onClick={onClose} aria-label="Close"><X size={23} /></button>}
       <div className="photo-modal-scroll" tabIndex={0} aria-label="Photo and memory">
-        <img src={photo.url} alt={photo.title} decoding="async" className="photo-modal-image" />
-        <p className="photo-caption">&ldquo;{photo.caption}&rdquo;</p>
+        {book ? <>
+          <img src={photo.url} alt={`${book.title} — ${book.author}`} decoding="async" className="photo-modal-image book-cover" />
+          <p className="photo-caption" lang="bn">{photo.caption}</p>
+        </> : <figure className="vintage-print">
+          <img src={photo.url} alt={photo.title} decoding="async" className="photo-modal-image" />
+          <figcaption className="vintage-caption">
+            <h2 id="photo-title">{photo.title}</h2>
+            <p className="vintage-date">{photo.date}</p>
+            <p className="photo-caption">{photo.caption}</p>
+          </figcaption>
+        </figure>}
+
       </div>
     </div>
   </div>;

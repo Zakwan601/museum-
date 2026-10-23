@@ -8,8 +8,9 @@ import type { KissState } from '../lib/kiss';
 import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 import { MUSEUM_BOUNDS, cameraWallDistance, constrainMuseumPosition, museumRoomAt } from '../lib/museumLayout';
 
-interface Props { cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
-export default function CameraRig({ cameraState, charPos, companionPos, kiss, settings }: Props) {
+import type { RoomTransitionState } from '../lib/roomTransition';
+interface Props { transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
+export default function CameraRig({ transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
   const { camera, gl, scene } = useThree();
   const dragPointerId = useRef<number | null>(null);
   const last = useRef({ x: 0, y: 0, distance: 0, interactive: false });
@@ -19,6 +20,7 @@ export default function CameraRig({ cameraState, charPos, companionPos, kiss, se
   const desired = useMemo(() => new THREE.Vector3(), []), ray = useMemo(() => new THREE.Raycaster(), []);
   const obstacles = useRef<THREE.Object3D[]>([]), intersections = useRef<THREE.Intersection[]>([]);
   const orbitDistance = useRef(settings.distance);
+  const lastRelocation = useRef(0);
   const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
   const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
   const shotTarget = useMemo(() => new THREE.Vector3(), []);
@@ -88,6 +90,10 @@ export default function CameraRig({ cameraState, charPos, companionPos, kiss, se
 
   useFrame((_, frameDelta) => {
     const dt = Math.min(frameDelta, .05), p = profile.current;
+    if (lastRelocation.current !== transition.relocation) {
+      lastRelocation.current = transition.relocation; anchor.current.copy(charPos);
+      pairOffset.current.copy(companionPos).sub(charPos).multiplyScalar(.45);
+    }
     p.distance = THREE.MathUtils.damp(p.distance, settings.distance, 5, dt);
     p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
     p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
@@ -137,20 +143,24 @@ export default function CameraRig({ cameraState, charPos, companionPos, kiss, se
     if (Math.abs(nextFov - perspective.fov) > .005) { perspective.fov = nextFov; perspective.updateProjectionMatrix(); }
     if (kiss.active) {
       const t = kiss.elapsed;
-      const blend = ease(t / 1.8) * (1 - ease((t - 6.2) / 2));
-      const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (kiss.mode === 'kiss' && !settings.reducedMotion ? .22 * Math.sin(t * .55) : 0);
+      const gifting = kiss.mode === 'bouquet';
+      const blend = ease(t / 1.8) * (1 - ease((t - (gifting ? 8.4 : 6.2)) / 2));
+      const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion ? 0 : gifting ? -.18 + .36 * ease((t - 1.8) / 5.4) : kiss.mode === 'kiss' ? .22 * Math.sin(t * .55) : 0);
       const aspect = perspective.aspect || 1;
-      const desiredDistance = Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
+      const desiredDistance = Math.min(5.4, Math.max(gifting ? 3.6 - .5 * ease((t - 2) / 3.5) : kiss.mode === 'photo' ? 3.4 : 2.8, (gifting ? 1.7 : 2.2) / aspect));
       shotDistance.current = THREE.MathUtils.damp(shotDistance.current, desiredDistance, 6, dt);
       const distance = shotDistance.current;
       const room = museumRoomAt(kiss.center.x);
-      shotTarget.copy(kiss.center); shotTarget.y = 1.08;
-      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, 1.85, kiss.center.z + Math.cos(orbit) * distance);
+      shotTarget.copy(kiss.center); shotTarget.y = gifting ? 1.02 : 1.08;
+      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, gifting ? 1.65 : 1.85, kiss.center.z + Math.cos(orbit) * distance);
       shot.position.x = THREE.MathUtils.clamp(shot.position.x, room.centerX - ROOM.width / 2 + CAMERA.wallMargin, room.centerX + ROOM.width / 2 - CAMERA.wallMargin);
       shot.position.z = THREE.MathUtils.clamp(shot.position.z, minZ, maxZ);
       shot.lookAt(shotTarget);
       camera.position.lerp(shot.position, blend);
       camera.quaternion.slerp(shot.quaternion, blend);
+    }
+    if (transition.active && !settings.reducedMotion) {
+      camera.position.lerp(target, .035 * Math.sin(Math.PI * transition.elapsed / 2.6));
     }
   });
   return null;

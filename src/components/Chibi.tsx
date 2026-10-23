@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import RoundGlasses from './RoundGlasses';
 import RectangularGlasses from './RectangularGlasses';
+import type { GiftGrip } from '../lib/bouquet';
 
 // Shared superellipsoid surfaces give the sculpt a rounded jaw and soft flat soles.
 function sculpt(power: number, rings = 12, segments = 20) {
@@ -59,8 +60,8 @@ function strand(points: number[][], width: number) {
   g.computeVertexNormals(); return g;
 }
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ variant, motion, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
@@ -141,6 +142,20 @@ export default function Chibi({ variant, motion, kissPose, kissHands, photoPose,
         grip.rest.set(side * .04, -.31 * reach, .015).normalize();
         grip.rotation.setFromUnitVectors(grip.rest, grip.direction.normalize());
         arm.quaternion.slerp(grip.rotation, affection);
+      }
+    }
+    if (giftGrip && giftGrip.current.amount > 0 && root.current) {
+      root.current.updateWorldMatrix(true, false);
+      const amount = giftGrip.current.amount;
+      for (const side of [-1, 1]) {
+        const arm = side < 0 ? leftArm.current : rightArm.current;
+        if (!arm) continue;
+        grip.target.copy(giftGrip.current.hands[side < 0 ? 0 : 1]); root.current.worldToLocal(grip.target);
+        grip.direction.copy(grip.target).sub(arm.position);
+        const reach = Math.sqrt(Math.max(.01, grip.direction.lengthSq() - .04 ** 2 - .015 ** 2)) / .31;
+        arm.scale.y = THREE.MathUtils.lerp(1, reach, amount);
+        grip.rest.set(side * .04, -.31 * reach, .015).normalize();
+        grip.rotation.setFromUnitVectors(grip.rest, grip.direction.normalize()); arm.quaternion.slerp(grip.rotation, amount);
       }
     }
   });

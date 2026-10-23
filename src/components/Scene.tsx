@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Gallery from './Gallery';
+import Bookshelf from './Bookshelf';
+import { BOOKS } from '../lib/books';
 import IndoorGalleries from './IndoorGalleries';
 import PhotoFrame from './PhotoFrame';
 import Character from './Character';
@@ -9,14 +11,24 @@ import CameraRig from './CameraRig';
 import { PHOTOS, ROOM } from '../config';
 import type { ControlState, CameraState } from '../controls';
 import type { PhotoConfig } from '../config';
-import { KISS_DURATION } from '../lib/kiss';
+import { KISS_DURATION, BOUQUET_DURATION } from '../lib/kiss';
 import type { KissState } from '../lib/kiss';
 import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 import RoomStructure from './RoomStructure';
+import MagicArchway from './MagicArchway';
+import { ROOM_PORTALS, ROOM_TRANSITION_DURATION } from '../lib/roomTransition';
+import type { RoomPortal, RoomTransitionState } from '../lib/roomTransition';
+import { ease } from '../lib/kiss';
 import { museumRoomAt } from '../lib/museumLayout';
 import type { MuseumRoom } from '../lib/museumLayout';
 
+const EXHIBITS = [...PHOTOS, ...BOOKS];
+
 interface Props {
+  transition: RoomTransitionState;
+  simpleTransitions: boolean;
+  onNearbyPortalChange: (portal: RoomPortal | null) => void;
+  onTransitionComplete: () => void;
   controls: ControlState;
   cameraState: CameraState;
   onPhotoClick: (photo: PhotoConfig) => void;
@@ -24,23 +36,50 @@ interface Props {
   onNearbyPhotoChange: (photo: PhotoConfig | null) => void;
   kiss: KissState;
   onKissComplete: () => void;
+  onBouquetStart: () => boolean;
   settings: ExperienceSettings;
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, settings, onRoomChange }: Props) {
+export default function Scene({ transition, simpleTransitions, onNearbyPortalChange, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(1.05, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
   const currentRoomId = useRef('school');
+  const futureWelcomePlayed = useRef(false);
+  const lastPortalId = useRef<string | null>(null);
   const [activeRoomIndex, setActiveRoomIndex] = useState(0);
+
+  useFrame((_, delta) => {
+    transition.cooldown = Math.max(0, transition.cooldown - Math.min(delta, .2));
+    if (!transition.active) return;
+    transition.elapsed = Math.min(ROOM_TRANSITION_DURATION, Math.max(0, (performance.now() - transition.startedAt) / 1000));
+    const t = transition.elapsed;
+    const opacity = t < 1.1 ? ease(t / 1.1) : t < 1.45 ? 1 : 1 - ease((t - 1.45) / 1.15);
+    if (transition.overlay) {
+      transition.overlay.style.opacity = String(opacity);
+      transition.overlay.style.backgroundColor = ['#2e2030', '#1b2235', '#352a22', '#2a2134'][transition.to];
+    }
+    if (t >= 1.25 && !transition.transferred) {
+      transition.transferred = true; transition.relocation += 1;
+      // Even a dropped frame must never reveal the character relocation.
+      if (transition.overlay) transition.overlay.style.opacity = '1';
+      return;
+    }
+    if (t >= ROOM_TRANSITION_DURATION) {
+      transition.active = false; transition.cooldown = 2; transition.ready = null;
+      if (transition.overlay) transition.overlay.style.opacity = '0';
+      onTransitionComplete();
+    }
+  }, -4);
 
   useFrame((_, delta) => {
     if (!kiss.active) return;
     if (kiss.mode === 'photo' && kiss.returning && kiss.elapsed >= 2.4 && kiss.elapsed < 4.6) kiss.elapsed = 4.6;
-    const limit = kiss.mode === 'photo' && !kiss.returning ? 2.4 : KISS_DURATION;
+    const duration = kiss.mode === 'bouquet' ? BOUQUET_DURATION : KISS_DURATION;
+    const limit = kiss.mode === 'photo' && !kiss.returning ? 2.4 : duration;
     kiss.elapsed = Math.min(limit, kiss.elapsed + Math.min(delta, .05));
-    if (kiss.elapsed >= KISS_DURATION) {
+    if (kiss.elapsed >= duration) {
       kiss.active = false;
       onKissComplete();
     }
@@ -53,9 +92,21 @@ export default function Scene({ controls, cameraState, onPhotoClick, nearbyPhoto
       onRoomChange(room);
       setActiveRoomIndex(room.index);
     }
+    // Wait until both characters have cleared the arch, then play once per visit.
+    if (!futureWelcomePlayed.current && room.index === 3 && charPos.x > room.centerX - ROOM.width / 2 + .35 && companionPos.x > room.centerX - ROOM.width / 2 + .35 && !kiss.active && !transition.active && !controls.paused) {
+      futureWelcomePlayed.current = onBouquetStart();
+    }
+    let portal: RoomPortal | null = null;
+    if (!transition.active && !kiss.active && transition.cooldown === 0) {
+      portal = ROOM_PORTALS.find(p => p.from === room.index && Math.abs(charPos.z) < 1.8 && Math.abs(companionPos.z) < 1.8 &&
+        Math.hypot(charPos.x - p.x, charPos.z) < (lastPortalId.current === p.id ? 3.8 : 3.4) &&
+        Math.hypot(companionPos.x - p.x, companionPos.z) < (lastPortalId.current === p.id ? 3.8 : 3.4)) ?? null;
+    }
+    transition.ready = portal;
+    if ((portal?.id ?? null) !== lastPortalId.current) { lastPortalId.current = portal?.id ?? null; onNearbyPortalChange(portal); }
     let nearest: PhotoConfig | null = null;
     let nearestDistance = Infinity;
-    for (const photo of PHOTOS) {
+    for (const photo of EXHIBITS) {
       // A wall or connecting passage must not activate a photo in another room.
       if ((photo.roomIndex ?? 0) !== room.index || Math.abs(charPos.x - room.centerX) > ROOM.width / 2 - .3) continue;
       const distance = Math.hypot(charPos.x - photo.position[0], charPos.z - photo.position[2]);
@@ -75,13 +126,15 @@ export default function Scene({ controls, cameraState, onPhotoClick, nearbyPhoto
   return (
     <>
       <RoomStructure />
+      {ROOM_PORTALS.map(portal => <MagicArchway key={portal.id} portal={portal} transition={transition} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} />)}
       <Gallery settings={settings} charPos={charPos} />
+      <Bookshelf charPos={charPos} compact={settings.compact} nearbyId={!kiss.active ? nearbyPhoto?.id ?? null : null} onOpen={book => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(book); }} />
       <IndoorGalleries compact={settings.compact} activeRoomIndex={activeRoomIndex} />
       {PHOTOS.map((photo) => (
         <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}
-      <Character controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
-      <CameraRig cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
+      <Character transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      <CameraRig transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );
 }

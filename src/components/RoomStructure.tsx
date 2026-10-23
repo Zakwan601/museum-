@@ -8,14 +8,14 @@ function DoorLabel({ name, x, direction }: { name: string; x: number; direction:
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 96;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#302631'; ctx.fillRect(0, 0, 640, 96);
+    ctx.clearRect(0, 0, 640, 96);
     ctx.fillStyle = '#f7e9ec'; ctx.font = '30px Gorditas, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${direction > 0 ? 'Next: ' : 'Back: '}${name}`, 320, 48);
+    ctx.fillText(name, 320, 48);
     const result = new THREE.CanvasTexture(canvas); result.colorSpace = THREE.SRGBColorSpace; return result;
-  }, [name, direction]);
+  }, [name]);
   useEffect(() => () => texture.dispose(), [texture]);
   return <mesh position={[x, 4.7, 0]} rotation={[0, direction > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
-    <planeGeometry args={[3.15, .34]} /><meshBasicMaterial map={texture} />
+    <planeGeometry args={[3.15, .34]} /><meshBasicMaterial map={texture} transparent depthWrite={false} />
   </mesh>;
 }
 const radius = PASSAGE.width / 2, spring = 2.25;

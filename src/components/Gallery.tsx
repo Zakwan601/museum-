@@ -150,7 +150,7 @@ export default function Gallery({ settings, charPos }: { settings: ExperienceSet
       </mesh>
 
       <WallSconce compact={settings.compact} position={[-width / 2 + 0.25, 3.5, 0]} rotation={[0, Math.PI / 2, 0]} />
-      <WallSconce compact={settings.compact} position={[width / 2 - 0.25, 3.5, 0]} rotation={[0, -Math.PI / 2, 0]} />
+      <WallSconce compact={settings.compact} position={[width / 2 - 0.25, 3.5, 4.55]} rotation={[0, -Math.PI / 2, 0]} />
       <WallSconce compact={settings.compact} position={[0, 3.5, -depth / 2 + 0.25]} rotation={[0, 0, 0]} />
 
       {FLOWER_POSITIONS.map((position, i) => <FlowerArrangement key={i} position={position} />)}

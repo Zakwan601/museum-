@@ -1,4 +1,5 @@
 import { CHARACTER, ROOM } from '../config';
+import { BOOKSHELF } from './books';
 
 export const PASSAGE = { length: 2, width: 4.2 };
 export const MUSEUM_ROOMS = ['School Days', 'College Days', 'University Life', 'Future'].map((name, index) => ({
@@ -12,6 +13,8 @@ export const MUSEUM_FURNITURE: MuseumWall[] = [22, 44].flatMap((x, i) => [
   { id: `gallery-bench-${i}`, position: [x, .44, 3.2] as [number, number, number], size: [3.2, .88, 1.05] as [number, number, number] },
   ...[-1, 1].map(side => ({ id: `gallery-flowers-${i}-${side}`, position: [x + side * 7.5, .55, -5.0] as [number, number, number], size: [.6, 1.1, .6] as [number, number, number] })),
 ]);
+
+MUSEUM_FURNITURE.push({ id: 'school-bookshelf', position: [BOOKSHELF.position[0], 1.7, BOOKSHELF.position[2]], size: [4.2, 3.4, .74] });
 
 // The rendered walls and collision boxes come from one layout.
 export const MUSEUM_WALLS: MuseumWall[] = [];

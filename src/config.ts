@@ -29,6 +29,7 @@ export const CAMERA = {
 
 export interface PhotoConfig {
   id: string;
+  kind?: 'book';
   roomIndex?: number;
   scale?: number;
   url: string;

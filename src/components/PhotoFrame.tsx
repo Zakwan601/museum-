@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { PhotoConfig } from '../config';
+import { vintagePaperTexture } from '../lib/vintagePaper';
 
 interface Props {
   photo: PhotoConfig;
@@ -12,9 +13,9 @@ interface Props {
 }
 
 const FRAME_W = 1.7;
-const FRAME_H = 1.3;
-const PHOTO_W = 1.5;
-const PHOTO_H = 1.1;
+const FRAME_H = 1.46;
+const PHOTO_W = 1.46;
+const PHOTO_H = 1.06;
 
 function createFallbackTexture(title: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -36,6 +37,8 @@ function createFallbackTexture(title: string): THREE.CanvasTexture {
 }
 
 export default function PhotoFrame({ photo, onClick, nearby = false, compact = false, reducedMotion = false }: Props) {
+  const paper = vintagePaperTexture();
+  const tilt = ((Array.from(photo.id).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 7) - 3) * .012;
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const frameRef = useRef<THREE.Mesh>(null);
   const spotRef = useRef<THREE.SpotLight>(null);
@@ -67,6 +70,14 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
         if (disposed) { tex.dispose(); return; }
         loaded = tex;
         tex.colorSpace = THREE.SRGBColorSpace;
+        // Fill the print window without stretching portrait or panoramic photos.
+        const image = tex.image as HTMLImageElement;
+        const aspect = image.naturalWidth / image.naturalHeight, windowAspect = PHOTO_W / PHOTO_H;
+        if (aspect > windowAspect) {
+          tex.repeat.x = windowAspect / aspect; tex.offset.x = (1 - tex.repeat.x) / 2;
+        } else {
+          tex.repeat.y = aspect / windowAspect; tex.offset.y = (1 - tex.repeat.y) / 2;
+        }
         setTexture(tex);
       },
       undefined,
@@ -84,7 +95,7 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
   useFrame(({ clock }, delta) => {
     if (!frameRef.current) return;
     const mat = frameRef.current.material as THREE.MeshStandardMaterial;
-    const glow = hovered ? .65 : nearby ? .42 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 2.5) * .09) : .12;
+    const glow = hovered ? .13 : nearby ? .08 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * 2.5) * .015) : .015;
     mat.emissiveIntensity = THREE.MathUtils.damp(mat.emissiveIntensity, glow, 8, delta);
   });
 
@@ -110,40 +121,17 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
         color="#fff5e6"
       />}
 
-      <mesh ref={frameRef} castShadow>
-        <boxGeometry args={[FRAME_W, FRAME_H, 0.08]} />
-        <meshStandardMaterial
-          color="#c4a26a"
-          roughness={0.3}
-          metalness={0.7}
-          emissive="#c4a26a"
-          emissiveIntensity={0.12}
-        />
-      </mesh>
+      <group rotation={[0, 0, tilt]} userData={{ interactivePhoto: true }}>
+        <mesh ref={frameRef} castShadow>
+          <boxGeometry args={[FRAME_W, FRAME_H, .018]} />
+          <meshStandardMaterial map={paper} roughness={.96} metalness={0} emissive="#f0dcb4" emissiveIntensity={.015} />
+        </mesh>
+        <mesh position={[0, .1, .012]} userData={{ interactivePhoto: true }} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
+          <planeGeometry args={[PHOTO_W, PHOTO_H]} />
+          <meshStandardMaterial map={texture ?? undefined} color={texture ? '#fbf5e8' : '#d4a574'} roughness={.88} onUpdate={material => { material.needsUpdate = true; }} />
+        </mesh>
+      </group>
 
-      <mesh position={[0, 0, 0.045]}>
-        <planeGeometry args={[PHOTO_W, PHOTO_H]} />
-        <meshStandardMaterial color="#3a2a1a" roughness={0.8} />
-      </mesh>
-
-      <mesh
-        position={[0, 0, 0.05]}
-        userData={{ interactivePhoto: true }}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        <planeGeometry args={[PHOTO_W - 0.06, PHOTO_H - 0.06]} />
-        <meshStandardMaterial map={texture ?? undefined} color={texture ? '#ffffff' : '#d4a574'} roughness={0.6} onUpdate={material => { material.needsUpdate = true; }} />
-      </mesh>
-
-      <mesh position={[-FRAME_W / 2 - 0.02, -FRAME_H / 2 - 0.02, 0.04]}>
-        <boxGeometry args={[0.06, 0.06, 0.12]} />
-        <meshStandardMaterial color="#a88a4a" roughness={0.4} metalness={0.6} />
-      </mesh>
-      <mesh position={[FRAME_W / 2 + 0.02, FRAME_H / 2 + 0.02, 0.04]}>
-        <boxGeometry args={[0.06, 0.06, 0.12]} />
-        <meshStandardMaterial color="#a88a4a" roughness={0.4} metalness={0.6} />
-      </mesh>
     </group>
   );
 }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="512" viewBox="0 0 384 512">
+  <defs>
+    <radialGradient id="age"><stop stop-color="#f6ecd2"/><stop offset="1" stop-color="#e8d9b5"/></radialGradient>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="17" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".09"/></feComponentTransfer><feBlend in="SourceGraphic" mode="multiply"/></filter>
+  </defs>
+  <path fill="url(#age)" filter="url(#grain)" d="M0 0h384v512H0z"/>
+  <g fill="none" stroke-width=".7"><path stroke="#fff9e7" opacity=".65" d="m0 72 62-9 95 7 54-3m55 370 73-5 45-14M0 481l49-14 57 3 73-7M304 0l-18 36 6 52"/><path stroke="#b09a6a" opacity=".16" d="m0 74 62-9 95 7M266 440l73-5 45-14M2 483l47-14 57 3M306 0l-18 36 6 52"/></g>
+</svg>
