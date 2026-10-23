@@ -21,7 +21,7 @@ const evaluate = async expression => {
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const touch = (type, points) => call('Input.dispatchTouchEvent', { type, touchPoints: points.map(([id, x, y]) => ({ id, x, y, radiusX: 4, radiusY: 4 })) });
 const key = (key, down) => call('Input.dispatchKeyEvent', { type: down ? 'keyDown' : 'keyUp', key, code: `Key${key.toUpperCase()}` });
-const names = ['School Days', 'College Days', 'University Life', 'Outro'];
+const names = ['School Days', 'College Days', 'University Life', 'Future'];
 try {
   await call('Runtime.enable'); errors.length = 0;
   for (const mobile of [false, true]) {
@@ -61,15 +61,15 @@ try {
   // Check preserved cinematics far from the original origin.
   await evaluate('actors[0].position.set(66,0,0);actors[1].position.set(67.05,0,-.3)'); await wait(1000);
   await evaluate('document.querySelector(`button[aria-label="Pose together for a photo"]`).click()'); await wait(2500);
-  assert.ok(await evaluate('actors.every(a=>a.position.x>56)'), 'portrait stays in Outro');
+  assert.ok(await evaluate('actors.every(a=>a.position.x>56)'), 'portrait stays in Future');
   const shot = await call('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync('../four-rooms-outro.png', Buffer.from(shot.result.data, 'base64'));
   await evaluate('document.querySelector(`button[aria-label="Return to walking"]`).click()'); await wait(4200);
   assert.ok(Math.abs(await evaluate('actors[0].position.x') - 66) < .01);
   await evaluate('document.querySelector(`button[aria-label="Share a kiss"]`).click()'); await wait(2600);
-  assert.ok(await evaluate('actors.every(a=>a.position.x>56)'), 'kiss stays in Outro'); await wait(6300);
+  assert.ok(await evaluate('actors.every(a=>a.position.x>56)'), 'kiss stays in Future'); await wait(6300);
   assert.ok(await evaluate('!document.querySelector(`button[aria-label="Share a kiss"]`).disabled'));
   assert.ok(Math.abs(await evaluate('actors[0].position.x') - 66) < .01);
-  assert.deepEqual(errors, []); console.log('PASS Outro photo pose, kiss, position restoration, no runtime exceptions');
+  assert.deepEqual(errors, []); console.log('PASS Future photo pose, kiss, position restoration, no runtime exceptions');
 } finally {
   await touch('touchCancel', []); await call('Page.reload'); ws.close();
 }

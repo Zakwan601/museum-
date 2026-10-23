@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();const ws=new WebSocket(tabs.find(p=>p.url==='http://127.0.0.1:5173/').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r));let id=0;const pending=new Map(),errors=[];ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);});const call=(method,params={})=>new Promise(r=>{const n=++id;pending.set(n,r);ws.send(JSON.stringify({id:n,method,params}));});const ev=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true});if(r.result.exceptionDetails)throw Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value;};const wait=ms=>new Promise(r=>setTimeout(r,ms));const click=selector=>ev(`document.querySelector(${JSON.stringify(selector)}).click()`);const setup=()=>ev(`(async()=>{const f=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('@react-three_fiber.js')).name);let root;for(let i=0;i<100&&!(root=f._roots.get(document.querySelector('canvas')));i++)await new Promise(r=>setTimeout(r,100));window.s=root.store.getState();window.T=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('/three.js')).name);window.actors=s.scene.children.filter(o=>o.type==='Group'&&o.children.some(c=>c.type==='Group'&&c.children.some(m=>m.geometry?.type==='LatheGeometry')));})()`);const key=(k,down)=>call('Input.dispatchKeyEvent',{type:down?'keyDown':'keyUp',key:k,code:'Key'+k.toUpperCase()});
+const reload = async (mobile) => {
+await ev('document.fullscreenElement ? document.exitFullscreen() : null');
+await call('Emulation.setDeviceMetricsOverride',{width:mobile?390:1440,height:mobile?844:900,deviceScaleFactor:1,mobile});await call('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});
+await call('Page.reload');await wait(700);for(let i=0;i<60&&!await ev('!!document.querySelector(".intro-star")');i++)await wait(200);
+await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);await click('.intro-star');await wait(200);
+};
+try {
+await call('Runtime.enable');
+await reload(true);
+await ev(`window.requests=0;window.lockCalls=0;window.requestTarget=document.querySelector('.museum-app');window.nativeRequest=requestTarget.requestFullscreen;requestTarget.requestFullscreen=function(options){requests++;window.activationAtRequest=navigator.userActivation.isActive;return nativeRequest.call(this,options)};Object.defineProperty(screen.orientation,'lock',{configurable:true,value:async mode=>{lockCalls++;window.lockMode=mode}})`);
+await click('.intro-enter');await wait(1800);
+assert.ok(await ev('document.fullscreenElement===requestTarget'));assert.equal(await ev('requests'),1);assert.equal(await ev('activationAtRequest'),true);assert.equal(await ev('lockCalls'),1);assert.equal(await ev('lockMode'),'landscape');assert.ok(await ev('!!document.querySelector("canvas")'));assert.equal(await ev('!!document.querySelector(".immersive-entry")'),false);
+await click('.immersive-exit');await wait(250);assert.equal(await ev('!!document.fullscreenElement'),false);
+await click('button[aria-label="Open museum menu"]');assert.ok(await ev('document.querySelector(".room-route").innerText.includes("Future")'));assert.equal(await ev('document.querySelector(".room-route").innerText.includes("Outro")'),false);await click('button[aria-label="Close museum menu"]');
+console.log('PASS native mobile fullscreen from entry tap, user activation, landscape request, stable root, exit and Future menu');
+await reload(true);
+await ev(`window.requests=0;document.querySelector('.museum-app').requestFullscreen=()=>{requests++;return Promise.reject(new DOMException('Denied','NotAllowedError'))}`);await click('.intro-enter');await wait(1800);
+assert.equal(await ev('requests'),1);assert.equal(await ev('!!document.fullscreenElement'),false);assert.ok(await ev('document.querySelector(".immersive-message").innerText.includes("could not start")'));assert.ok(await ev('!!document.querySelector("canvas")'));assert.ok(await ev('!!document.querySelector(".immersive-entry")'));
+console.log('PASS denied automatic request: museum opens, honest fallback and optional retry');
+await reload(true);await ev(`document.querySelector('.museum-app').requestFullscreen=undefined`);await click('.intro-enter');await wait(1800);assert.ok(await ev('document.querySelector(".immersive-message").innerText.includes("unavailable")'));assert.ok(await ev('!!document.querySelector("canvas")'));
+console.log('PASS unsupported mobile fullscreen still opens museum');
+await reload(false);await ev(`window.requests=0;document.querySelector('.museum-app').requestFullscreen=()=>{requests++;throw Error('Desktop must not request fullscreen')}`);await click('.intro-enter');await wait(1800);assert.equal(await ev('requests'),0);assert.equal(await ev('!!document.querySelector(".immersive-entry")'),false);await setup();
+await ev('actors[0].position.set(66,0,0);actors[1].position.set(67.05,0,-.3)');await wait(300);assert.ok(await ev('document.querySelector(".museum-location").innerText.includes("Future")'));
+assert.deepEqual(errors,[]);console.log('PASS desktop unchanged, Future room label, no runtime exceptions');
+}finally{await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

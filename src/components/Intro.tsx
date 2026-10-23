@@ -8,7 +8,7 @@ const wishes = [
   'and a lifetime of making more, together.',
 ];
 
-export default function Intro({ onEnter, reducedMotion }: { onEnter: () => void; reducedMotion: boolean }) {
+export default function Intro({ onEnter, onEnterRequest, reducedMotion }: { onEnter: () => void; onEnterRequest?: () => void; reducedMotion: boolean }) {
   const [started, setStarted] = useState(false);
   const [ready, setReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -37,7 +37,7 @@ export default function Intro({ onEnter, reducedMotion }: { onEnter: () => void;
         <div className="intro-lines">{wishes.map((line, i) => <p className="intro-line" key={line} style={{ animationDelay: reducedMotion ? '0s' : `${i * 1.4}s` }}>
           <span>{line}</span><span className="intro-line-sparkles" aria-hidden="true" style={{ animationDelay: reducedMotion ? '0s' : `${i * 1.4 + .5}s` }}>✧<b>✦</b>✧</span>
         </p>)}</div>
-        <div className="intro-enter-slot">{ready && <button type="button" className="intro-enter" disabled={leaving} onClick={() => setLeaving(true)}>Enter Our Little World <ArrowRight size={18} aria-hidden="true" /></button>}</div>
+        <div className="intro-enter-slot">{ready && <button type="button" className="intro-enter" disabled={leaving} onClick={() => { onEnterRequest?.(); setLeaving(true); }}>Enter Our Little World <ArrowRight size={18} aria-hidden="true" /></button>}</div>
       </section>}
     </div>
   </main>;

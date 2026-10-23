@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Camera, Heart, Menu, X, ArrowUpRight } from 'lucide-react';
 import * as THREE from 'three';
@@ -14,10 +14,13 @@ import { createKissState } from './lib/kiss';
 import { MUSEUM_ROOMS } from './lib/museumLayout';
 import ImmersiveMode from './components/ImmersiveMode';
 import Intro from './components/Intro';
+import { useImmersiveMode } from './hooks/useImmersiveMode';
 
 export default function App() {
   const [entered, setEntered] = useState(false);
   const museumElement = useRef<HTMLDivElement>(null);
+  const immersive = useImmersiveMode(museumElement);
+  const finishIntro = useCallback(() => setEntered(true), []);
   const controls = useMemo(createControlState, []);
   const cameraState = useMemo(createCameraState, []);
   const kiss = useMemo(createKissState, []);
@@ -67,9 +70,10 @@ export default function App() {
     kiss.returning = true; setPoseReturning(true);
   };
   const blocked = Boolean(selectedPhoto) || menuOpen || isKissing;
-  if (!entered) return <Intro onEnter={() => setEntered(true)} reducedMotion={settings.reducedMotion} />;
   return (
-    <div ref={museumElement} className="museum-app museum-arrival">
+    <div ref={museumElement} className={`museum-app ${entered ? 'museum-arrival' : ''}`}>
+      {!entered ? <Intro onEnter={finishIntro} onEnterRequest={() => { if (settings.compact) void immersive.enter(); }} reducedMotion={settings.reducedMotion} /> : <>
+
       <Canvas
         shadows={!batterySaver}
         camera={initialCamera}
@@ -114,7 +118,8 @@ export default function App() {
         <div className={`museum-joystick ${blocked ? 'invisible' : ''}`}><VirtualJoystick controls={controls} disabled={blocked} /></div>
       </div>
       {selectedPhoto && <PhotoModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />}
-      <ImmersiveMode target={museumElement} enabled={settings.compact} modalOpen={Boolean(selectedPhoto)} hideEntry={menuOpen || isKissing || showHint} />
+      </>}
+      {entered && <ImmersiveMode mode={immersive} enabled={settings.compact} modalOpen={Boolean(selectedPhoto)} hideEntry={menuOpen || isKissing || showHint} />}
     </div>
   );
 }

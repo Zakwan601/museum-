@@ -1,7 +1,7 @@
 import { CHARACTER, ROOM } from '../config';
 
 export const PASSAGE = { length: 2, width: 4.2 };
-export const MUSEUM_ROOMS = ['School Days', 'College Days', 'University Life', 'Outro'].map((name, index) => ({
+export const MUSEUM_ROOMS = ['School Days', 'College Days', 'University Life', 'Future'].map((name, index) => ({
   id: ['school', 'college', 'university', 'outro'][index], name, index, centerX: index * (ROOM.width + PASSAGE.length),
 }));
 export type MuseumRoom = (typeof MUSEUM_ROOMS)[number];

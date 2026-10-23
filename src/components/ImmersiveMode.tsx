@@ -1,10 +1,9 @@
 ﻿import { Expand, Minimize, X } from 'lucide-react';
-import type { RefObject } from 'react';
-import { useImmersiveMode } from '../hooks/useImmersiveMode';
+import type { useImmersiveMode } from '../hooks/useImmersiveMode';
 
-interface Props { target: RefObject<HTMLElement>; enabled: boolean; modalOpen: boolean; hideEntry: boolean }
-export default function ImmersiveMode({ target, enabled, modalOpen, hideEntry }: Props) {
-  const { fullscreen, busy, message, enter, exit, dismissMessage } = useImmersiveMode(target);
+interface Props { mode: ReturnType<typeof useImmersiveMode>; enabled: boolean; modalOpen: boolean; hideEntry: boolean }
+export default function ImmersiveMode({ mode, enabled, modalOpen, hideEntry }: Props) {
+  const { fullscreen, busy, message, enter, exit, dismissMessage } = mode;
   if (!enabled && !fullscreen) return null;
   return <div className={`immersive-ui ${fullscreen ? 'is-fullscreen' : ''} ${modalOpen ? 'over-modal' : ''}`}>
     {fullscreen ? <button type="button" className="hud-button immersive-exit" aria-label="Exit fullscreen" title="Exit fullscreen" onClick={() => void exit()}><Minimize size={19} /></button> : !modalOpen && !hideEntry && <button type="button" className="immersive-entry" onClick={() => void enter()} disabled={busy}>

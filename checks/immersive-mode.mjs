@@ -10,7 +10,17 @@ const wait = ms => new Promise(r => setTimeout(r,ms));
 const click = async selector => {await ev(`document.querySelector(${JSON.stringify(selector)}).click()`);await wait(100);};
 const exists = selector => ev(`!!document.querySelector(${JSON.stringify(selector)})`);
 const message = () => ev(`document.querySelector('.immersive-message')?.innerText ?? ''`);
-const reset = async () => {await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});await call('Page.reload');await wait(1500);for(let i=0;i<40&&!await exists('.immersive-entry');i++)await wait(100);};
+const reset = async () => {
+  await ev('document.fullscreenElement ? document.exitFullscreen().catch(()=>{}) : null');
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});await call('Page.reload');await wait(700);
+  for(let i=0;i<60&&!await exists('.intro-star');i++)await wait(200);
+  // Isolate the manual retry tests from the separate automatic-entry check.
+  await ev('document.querySelector(".museum-app").requestFullscreen=undefined');
+  await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);
+  await click('.intro-star');await click('.intro-enter');await wait(1400);
+  await ev('delete document.querySelector(".museum-app").requestFullscreen');
+  await call('Emulation.setEmulatedMedia',{features:[]});
+};
 const mock = async code => ev(`(() => {
   window.activeFullscreen=null;window.lockCalls=0;window.unlockCalls=0;window.requestCalls=0;
   Object.defineProperty(document,'fullscreenElement',{configurable:true,get:()=>activeFullscreen});
