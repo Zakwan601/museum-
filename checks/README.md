@@ -1,6 +1,6 @@
 ## Cake ceremony (Step 2)
 
-The same cake state and Scene frame loop now proceed through positioning, lighting, wish, blowing, and finished. The nearby prompt is guarded synchronously. Character reuses its existing velocity/step inputs and bouquet grip while guiding the girl around the solid pedestal and waiting NPC; both face the cake. Three shared-geometry flames light at 0.65-second intervals with one shadow-free local light. After the wish message has been visible for four seconds, the single continuation button appears. Existing Chibi eye scaling provides a brief eye closure; flames and light fade out together, with twelve short-lived points (disabled for reduced motion/battery saver). Normal girl controls, memories, and replay unlock afterward. No kiss, constellation, or anniversary-message transition starts.
+The same cake state and Scene frame loop now proceed through positioning, lighting, wish, blowing, and finished. The nearby prompt is guarded synchronously. Character preserves the player-chosen position and bouquet grip, stops both walking velocities, and smoothly turns both characters toward the cake. Three shared-geometry flames light at 0.65-second intervals with one shadow-free local light. After the wish message has been visible for four seconds, the single continuation button appears. Existing Chibi eye scaling provides a brief eye closure; flames and light fade out together, with twelve short-lived points (disabled for reduced motion/battery saver). Normal girl controls, memories, and replay unlock afterward. No kiss, constellation, or anniversary-message transition starts.
 
 `checks/cake-ceremony.mjs` exercises real touch and mouse activation, duplicate guards, sequential lighting, movement locks, actor/pedestal clearance, reading pause, extinction, control restoration, and replay. State changes alone update React UI; frame animation mutates the existing shared state. Replay resets every ceremony field and remounts/disposes its scene resources.
 
@@ -127,3 +127,15 @@ The existing bouquet camera makes one complete, eased 360-degree turn between 1.
 `node checks/bouquet-orbit.mjs` samples actual camera positions through desktop, phone portrait, landscape, and reduced-motion sequences. It verifies the full turn, character framing and camera focus, unchanged hand grips, no girl auto-movement, and a stopped orbit after the handoff to the cake stage.
 
 Normal exploration uses a closer 4.2-unit portrait-phone camera (landscape stays 4.8). Cake exploration uses 5.5 in portrait instead of 6.2; cinematic framing is unchanged. Existing damping handles orientation changes.
+
+## Stationary kiss and bouquet
+
+Kiss and bouquet moments retain both starting world positions. Their axis comes from the actual pair, and only facing, hand/face poses, bouquet grips, and the existing camera animate. Camera-relative photo posing retains its original coordinated paths. A 1.3-unit proximity guard rejects distant starts with a short instruction; the final arrival already places the couple within range. `checks/stationary-moments.mjs` checks distant-start rejection and records every active frame on desktop/mobile to verify zero actor translation through both sequences.
+
+Stationary kisses now solve a shared world-space lip contact point using each head?s actual rotation and character height scale. The smooth kiss envelope leans the heads together without changing either actor?s feet. The stationary-moment check measures actual mouth separation during the hold as well as zero actor translation.
+
+`checks/cake-facing.mjs` follows the real final-room arrival on mobile and desktop, checks that the stationary girl turns toward the boy during his cake walk, and confirms normal movement resumes after his invitation. During the preceding lighting reveal she faces the cake; only her facing changes.
+
+Cake ceremony positioning now turns both characters toward the cake in place. It retains the clear spot chosen by the player and stops both walking velocities for the entire ceremony. The ceremony browser check verifies unchanged positions in every recorded frame through positioning, lighting, wishing, and blowing.
+
+The cake ceremony camera chooses the bisector of both cake-facing directions once on activation, eases around to that front-side angle, lowers its pitch, and uses a closer 4.4-unit minimum distance with a portrait fit guard. Pair-focused framing blends in smoothly. Existing ceremony checks cover full-body framing at narrow portrait and landscape sizes, stationary characters, and the complete candle sequence; screenshots show both faces and the cake. Normal exploration input resumes afterward.

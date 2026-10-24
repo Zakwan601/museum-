@@ -28,7 +28,7 @@ for (const mobile of [true,false]) {
  await pointerTap('.cake-wish-button',mobile);
  assert.equal(await ev('c.phase'),'positioning');assert.equal(await ev('!!document.querySelector(".cake-wish-button")'),false);
  assert.equal(await ev(`(async()=>{const m=await import('/src/lib/cake.ts');return m.startCakeCeremony(c)})()`),false,'duplicate start rejected');
- await ev(`window.samples=[];window.watch=true;window.monitor=()=>{if(!watch)return;const light=s.scene.getObjectByName('cake-candle-light');samples.push({phase:c.phase,lit:c.lit,flame:c.flame,eyes:c.eyesClosed,light:light.intensity,gap:actors[0].position.distanceTo(actors[1].position),cakeGap:actors[0].position.distanceTo(cakePosition),boyGap:actors[1].position.distanceTo(cakePosition)});requestAnimationFrame(monitor)};monitor()`);
+ await ev(`window.samples=[];window.watch=true;window.monitor=()=>{if(!watch)return;const light=s.scene.getObjectByName('cake-candle-light');samples.push({phase:c.phase,lit:c.lit,flame:c.flame,eyes:c.eyesClosed,light:light.intensity,gap:actors[0].position.distanceTo(actors[1].position),cakeGap:actors[0].position.distanceTo(cakePosition),boyGap:actors[1].position.distanceTo(cakePosition),positions:actors.map(a=>a.position.toArray())});requestAnimationFrame(monitor)};monitor()`);
  await until('c.phase==="lighting"',20);
  assert.ok(await ev('samples.every(p=>p.gap>=1.025&&p.cakeGap>=.999&&p.boyGap>=.999)'),'characters never intersect each other or pedestal');
  await key('w',true);const stationary=await positions();await wait(300);await key('w',false);assert.deepEqual(await positions(),stationary,'normal controls locked during ceremony');
@@ -47,6 +47,7 @@ for (const mobile of [true,false]) {
  await pointerTap('.cake-blow-button',mobile);assert.equal(await ev('c.phase'),'blowing');assert.equal(await ev('!!document.querySelector(".cake-blow-button")'),false);
  assert.equal(await ev(`(async()=>{const m=await import('/src/lib/cake.ts');return m.blowCakeCandles(c)})()`),false,'repeated blow rejected');
  await until('c.phase==="finished"',6);await ev('watch=false');
+ assert.ok(await ev('samples.every(p=>JSON.stringify(p.positions)===JSON.stringify(samples[0].positions))'),'neither character walks during positioning, lighting, wishing or blowing');
  assert.ok(await ev('samples.some(p=>p.eyes>.9)&&samples.some(p=>p.phase==="blowing"&&p.flame>0&&p.flame<1)'),'gentle eye closure and gradual extinction');
  assert.equal(await ev('s.scene.getObjectByName("cake-candle-light").intensity'),0);assert.equal(await ev('s.scene.getObjectByName("cake-wish-sparkles").visible'),false);
  assert.equal(await ev('s.scene.getObjectByName("cake-flames").children.some(o=>o.visible)'),false);

@@ -1,4 +1,4 @@
-import { CAKE, constrainCakePosition, cakeCeremonyActive, ceremonyWaypoint } from '../lib/cake';
+import { CAKE, constrainCakePosition, cakeCeremonyActive } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import { constrainGardenPosition } from '../lib/gardenLayout';
 import { endingFrozen } from '../lib/ending';
@@ -26,8 +26,8 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   const lastRelocation = useRef(0);
   const companionVelocity = useRef(new THREE.Vector3());
   const kissPose = useRef(0);
+  const kissContact = useRef(new THREE.Vector3());
   const wishEyes = useRef(0);
-  const ceremonyTarget = useRef(new THREE.Vector3());
   const momentPath = useRef(createMomentPath());
   const kissHands = useRef<[THREE.Vector3, THREE.Vector3]>([new THREE.Vector3(), new THREE.Vector3()]);
   const photoPose = useRef(0);
@@ -55,21 +55,25 @@ export default function Character({ ending, cake, transition, controls, cameraSt
       motion.current = companionMotion.current = 0;
       charPos.copy(group.current.position); companionPos.copy(companion.current.position);
     }
+    kiss.pairDistance = group.current.position.distanceTo(companion.current.position);
     if (endingFrozen(ending)) return;
     receiver.current.amount = giver.current.amount = 0; bouquet.current.visible = false;
     if (kiss.active) {
       const state = saved.current;
       if (state.sequence !== kiss.sequence) {
         state.sequence = kiss.sequence;
-        rejoiningFormation.current = true;
+        rejoiningFormation.current = kiss.mode === 'photo';
         state.player.copy(group.current.position); state.partner.copy(companion.current.position);
         state.playerYaw = group.current.rotation.y; state.partnerYaw = companion.current.rotation.y;
         kiss.center.copy(state.player).add(state.partner).multiplyScalar(.5);
         const photo = kiss.mode === 'photo';
         const room = museumRoomAt(state.player.x);
+        if (photo) {
         kiss.center.x = room.centerX + THREE.MathUtils.clamp(kiss.center.x - room.centerX, photo ? -3.5 : -7, photo ? 3.5 : 7);
         kiss.center.z = THREE.MathUtils.clamp(kiss.center.z, photo ? -1 : -4, photo ? 1 : 4);
-        kiss.axis.set(Math.cos(cameraState.smoothedAzimuth), 0, -Math.sin(cameraState.smoothedAzimuth));
+        }
+        if (photo) kiss.axis.set(Math.cos(cameraState.smoothedAzimuth), 0, -Math.sin(cameraState.smoothedAzimuth));
+        else kiss.axis.copy(state.partner).sub(state.player).setY(0).normalize();
         planMomentPath(momentPath.current, state.player, state.partner, kiss.center, kiss.axis, photo ? 1 : kiss.mode === 'bouquet' ? .94 : .73);
         // Resume following on the partner's original side after the return,
         // rather than immediately cutting across the player to a fixed side.
@@ -83,8 +87,9 @@ export default function Character({ ending, cake, transition, controls, cameraSt
       const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
       const pose = (actor: THREE.Group, yaw: number, side: number, targetYaw: number, speed: { current: number }) => {
         const oldX = actor.position.x, oldZ = actor.position.z;
-        sampleMomentPosition(momentPath.current, progress, side, actor.position);
-        actor.rotation.y = yaw + angle(targetYaw, yaw) * momentFacing(progress);
+        if (kiss.mode === 'photo') sampleMomentPosition(momentPath.current, progress, side, actor.position);
+        // Kiss and gift scenes preserve the exact starting foot positions.
+        actor.rotation.y = yaw + angle(targetYaw, yaw) * (kiss.mode === 'photo' ? momentFacing(progress) : progress);
         speed.current = Math.hypot(actor.position.x - oldX, actor.position.z - oldZ) / Math.max(delta, .001);
       };
       const photoYaw = Math.atan2(-kiss.axis.z, kiss.axis.x);
@@ -95,6 +100,7 @@ export default function Character({ ending, cake, transition, controls, cameraSt
       kissHands.current.forEach((hand, index) => hand.copy(kiss.center).addScaledVector(
         state.target.set(kiss.axis.z, 0, -kiss.axis.x), index === 0 ? -.265 : .265,
       ).setY(.74));
+      kissContact.current.copy(kiss.center).setY(1.085);
       kissPose.current = kiss.mode === 'kiss' ? ease((t - 1.5) / .6) * (1 - ease((t - 4.2) / .5)) : 0;
       photoPose.current = kiss.mode === 'photo' ? ease((t - 1) / .8) * (1 - retreat) : 0;
       if (gifting) {
@@ -121,23 +127,15 @@ export default function Character({ ending, cake, transition, controls, cameraSt
     if (cakeCeremonyActive(cake)) {
       const actor = group.current, boy = companion.current;
       const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
-      const target = ceremonyWaypoint(cake, actor.position, ceremonyTarget.current);
-      const gap = actor.position.distanceTo(target);
-      const speed = cake.phase === 'positioning' ? Math.min(1.05, gap * 4) : 0;
-      velocity.current.copy(target).sub(actor.position).normalize().multiplyScalar(speed);
-      const oldX = actor.position.x, oldZ = actor.position.z;
-      actor.position.addScaledVector(velocity.current, delta);
-      constrainCakePosition(actor.position); constrainGardenPosition(actor.position);
-      // Keep the same solid NPC separation used during normal cake exploration.
-      target.copy(actor.position).sub(boy.position);
-      if (target.length() < 1.04) actor.position.copy(boy.position).add(target.setLength(1.04));
-      motion.current = Math.hypot(actor.position.x - oldX, actor.position.z - oldZ) / Math.max(delta, .001);
-      const yaw = motion.current > .08 ? Math.atan2(velocity.current.x, velocity.current.z) : Math.atan2(CAKE.position.x - actor.position.x, CAKE.position.z - actor.position.z);
+      // The player already chose a clear spot within interaction range.
+      // Only turn toward the cake; never auto-walk away from that spot.
+      velocity.current.set(0, 0, 0); motion.current = 0;
+      const yaw = Math.atan2(CAKE.position.x - actor.position.x, CAKE.position.z - actor.position.z);
       actor.rotation.y += angle(yaw, actor.rotation.y) * (1 - Math.exp(-9 * delta));
       const boyYaw = Math.atan2(CAKE.position.x - boy.position.x, CAKE.position.z - boy.position.z);
       boy.rotation.y += angle(boyYaw, boy.rotation.y) * (1 - Math.exp(-9 * delta));
       companionVelocity.current.set(0, 0, 0); companionMotion.current = 0;
-      cake.positioned = cake.route === 2 && gap < .025 && Math.abs(angle(yaw, actor.rotation.y)) < .06;
+      cake.positioned = Math.abs(angle(yaw, actor.rotation.y)) < .06 && Math.abs(angle(boyYaw, boy.rotation.y)) < .06;
       heading.current = actor.rotation.y;
       charPos.copy(actor.position); companionPos.copy(boy.position);
       if (kiss.bouquetReceived) {
@@ -202,7 +200,11 @@ export default function Character({ ending, cake, transition, controls, cameraSt
     if ((requestedZ - group.current.position.z) * velocity.current.z > .00001) velocity.current.z = 0;
     charPos.copy(group.current.position);
     motion.current = Math.hypot(charPos.x - startX, charPos.z - startZ) / Math.max(delta, .001);
-    if (motion.current > .1) heading.current = Math.atan2(velocity.current.x, velocity.current.z);
+    if (atCake && (cake.phase === 'revealing' || cake.phase === 'walking')) {
+      // Watch the reveal, then follow the invitation with her gaze only.
+      const focus = cake.phase === 'walking' ? companion.current.position : CAKE.position;
+      heading.current = Math.atan2(focus.x - charPos.x, focus.z - charPos.z);
+    } else if (motion.current > .1) heading.current = Math.atan2(velocity.current.x, velocity.current.z);
     const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
     group.current.rotation.y += angle(heading.current, group.current.rotation.y) * (1 - Math.exp(-CHARACTER.rotationSpeed * delta));
     follow.current.set(1.05 * followSide.current, 0, -.35).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(charPos);
@@ -278,8 +280,8 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   }, -1);
   return <>
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

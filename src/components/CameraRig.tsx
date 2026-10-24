@@ -1,4 +1,4 @@
-import { cakeCeremonyActive } from '../lib/cake';
+import { CAKE, cakeCeremonyActive } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import { endingFrozen, endingView, ENDING_PULLBACK_SECONDS } from '../lib/ending';
 import type { EndingState, EndingPhase } from '../lib/ending';
@@ -26,6 +26,9 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
   const orbitDistance = useRef(settings.distance);
   const lastRelocation = useRef(0);
   const finalAspect = useRef(0);
+  const cakeShotStarted = useRef(false);
+  const cakeFocus = useMemo(() => new THREE.Vector3(), []);
+  const cakeBlend = useRef(0);
   const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
   const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
   const shotTarget = useMemo(() => new THREE.Vector3(), []);
@@ -88,7 +91,20 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
 
   useFrame((_, frameDelta) => {
     const delta = Math.min(frameDelta, .05);
-    const turningSpeed = ending.phase === 'cake' && performance.now() - ending.startedAt < 2400 ? 2.8 : 12;
+    if (!cake.acknowledged) cakeShotStarted.current = false;
+    if (cakeCeremonyActive(cake) && !cakeShotStarted.current) {
+      cakeShotStarted.current = true;
+      // Look from the cake side of the pair, where their faces turn inward.
+      const girlDistance = Math.max(.001, charPos.distanceTo(CAKE.position));
+      const boyDistance = Math.max(.001, companionPos.distanceTo(CAKE.position));
+      const dx = (CAKE.position.x - charPos.x) / girlDistance + (CAKE.position.x - companionPos.x) / boyDistance;
+      const dz = (CAKE.position.z - charPos.z) / girlDistance + (CAKE.position.z - companionPos.z) / boyDistance;
+      const view = Math.hypot(dx, dz) > .15 ? Math.atan2(dx, dz) : Math.atan2(-(companionPos.z - charPos.z), companionPos.x - charPos.x);
+      const turn = THREE.MathUtils.euclideanModulo(view - smoothAzimuth.current + Math.PI, Math.PI * 2) - Math.PI;
+      cameraState.azimuth = smoothAzimuth.current + turn;
+      cameraState.pitch = .20;
+    }
+    const turningSpeed = cakeCeremonyActive(cake) ? 2 : ending.phase === 'cake'  && performance.now() - ending.startedAt < 2400 ? 2.8 : 12;
     smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, turningSpeed, delta);
     smoothPitch.current = THREE.MathUtils.damp(smoothPitch.current, cameraState.pitch, 12, delta);
     cameraState.smoothedAzimuth = smoothAzimuth.current;
@@ -128,7 +144,7 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     }
     const ceremony = cakeCeremonyActive(cake);
     const halfHorizontalFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov / 2)) * perspectiveCamera.aspect);
-    const ceremonyDistance = Math.max(6.4, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
+    const ceremonyDistance = Math.max(4.4, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
     p.distance = THREE.MathUtils.damp(p.distance, ceremony ? ceremonyDistance : ending.phase === 'cake' ? (settings.phone && settings.portrait ? 5.5 : settings.compact ? 6.2 : 6.8) : settings.distance, 5, dt);
     p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
     p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
@@ -141,9 +157,9 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     target.copy(anchor.current); target.y += p.height;
     target.x += (pairOffset.current.x - sin * .35) * p.compact;
     target.z += (pairOffset.current.z - cos * .35) * p.compact;
-    if (ceremony) {
-      target.copy(charPos).add(companionPos).multiplyScalar(.5); target.y = 1.1;
-    }
+    cakeBlend.current = THREE.MathUtils.damp(cakeBlend.current, ceremony ? 1 : 0, 3, dt);
+    cakeFocus.copy(charPos).add(companionPos).multiplyScalar(.5); cakeFocus.y = 1.05;
+    target.lerp(cakeFocus, cakeBlend.current);
     const minX = MUSEUM_BOUNDS.minX + CAMERA.wallMargin, maxX = MUSEUM_BOUNDS.maxX - CAMERA.wallMargin;
     const minZ = MUSEUM_BOUNDS.minZ + CAMERA.wallMargin, maxZ = MUSEUM_BOUNDS.maxZ - CAMERA.wallMargin;
     if (!exterior) constrainMuseumPosition(target, .3);

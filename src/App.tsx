@@ -78,8 +78,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', close);
   }, []);
 
+  const [momentHint, setMomentHint] = useState(false);
   const startMoment = (mode: 'kiss' | 'photo' | 'bouquet') => {
     if (kiss.active || transition.active || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet')) return false;
+    if (mode !== 'photo' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
+    setMomentHint(false);
     if (mode === 'bouquet') onEndingChange('bouquet');
     kiss.elapsed = 0; kiss.mode = mode; kiss.returning = false;
     kiss.sequence += 1; kiss.active = true;
@@ -106,7 +109,7 @@ export default function App() {
   };
   const replayStory = () => {
     // The fullscreen host stays mounted; only the experience is reset.
-    setEntered(false); setSelectedPhoto(null); setNearbyPhoto(null); setMemories([]);
+    setMomentHint(false); setEntered(false); setSelectedPhoto(null); setNearbyPhoto(null); setMemories([]);
     setMenuOpen(false); setShowHint(false); setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); setIsTransitioning(false);
     Object.assign(controls, createControlState()); Object.assign(cameraState, createCameraState());
     Object.assign(kiss, createKissState()); Object.assign(transition, createRoomTransition()); Object.assign(ending, createEnding()); Object.assign(cake, createCakeState()); setCakeState(cakeUi(cake));
@@ -162,6 +165,7 @@ export default function App() {
           </>}
         </div>}
         {isKissing && !isPosing && <div className="cinema-bars" aria-hidden="true" />}
+        {momentHint && !isKissing && !inEnding && !menuOpen && !selectedPhoto && <p className="cake-invitation" role="status">Move a little closer to each other first. &#9825;</p>}
         {isGivingBouquet && <p className="bouquet-caption" role="status">For all our tomorrows.</p>}
         {exploringCake && !selectedPhoto && !menuOpen && <>
           {cakeState.phase === 'inviting' && !cakeState.nearby && !showHint && <p className="cake-invitation" role="status">Come here, I have one more little surprise for you. &#9825;</p>}
