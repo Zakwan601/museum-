@@ -26,9 +26,9 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
   const orbitDistance = useRef(settings.distance);
   const lastRelocation = useRef(0);
   const finalAspect = useRef(0);
-  const cakeShotStarted = useRef(false);
+  const cakeShotStarted = useRef(false), cakeKissFramed = useRef(false);
   const cakeFocus = useMemo(() => new THREE.Vector3(), []);
-  const cakeBlend = useRef(0);
+  const cakeBlend = useRef(0), cakeLookHeight = useRef(1.05);
   const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
   const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
   const shotTarget = useMemo(() => new THREE.Vector3(), []);
@@ -91,7 +91,7 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
 
   useFrame((_, frameDelta) => {
     const delta = Math.min(frameDelta, .05);
-    if (!cake.acknowledged) cakeShotStarted.current = false;
+    if (!cake.acknowledged) { cakeShotStarted.current = false; cakeKissFramed.current = false; }
     if (cakeCeremonyActive(cake) && !cakeShotStarted.current) {
       cakeShotStarted.current = true;
       // Look from the cake side of the pair, where their faces turn inward.
@@ -103,6 +103,13 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
       const turn = THREE.MathUtils.euclideanModulo(view - smoothAzimuth.current + Math.PI, Math.PI * 2) - Math.PI;
       cameraState.azimuth = smoothAzimuth.current + turn;
       cameraState.pitch = .20;
+    }
+    if (cake.phase === 'kissing' && !cakeKissFramed.current) {
+      cakeKissFramed.current = true;
+      const side = Math.atan2(-(companionPos.z - charPos.z), companionPos.x - charPos.x);
+      let turn = THREE.MathUtils.euclideanModulo(side - smoothAzimuth.current + Math.PI, Math.PI * 2) - Math.PI;
+      if (Math.abs(turn) > Math.PI / 2) turn += turn > 0 ? -Math.PI : Math.PI;
+      cameraState.azimuth = smoothAzimuth.current + turn;
     }
     const turningSpeed = cakeCeremonyActive(cake) ? 2 : ending.phase === 'cake'  && performance.now() - ending.startedAt < 2400 ? 2.8 : 12;
     smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, turningSpeed, delta);
@@ -118,11 +125,12 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     if (endingFrozen(ending)) {
       // Capture once. After the reveal, no orbit, damping or idle camera work runs.
       if (!ending.cameraCaptured) {
+        ending.center.copy(charPos).add(companionPos).multiplyScalar(.5);
         ending.cameraCaptured = true; ending.cameraPosition.copy(camera.position); ending.cameraRotation.copy(camera.quaternion); ending.cameraFov = perspectiveCamera.fov;
       }
       if (ending.phase === 'complete' && finalAspect.current === perspectiveCamera.aspect) return;
       const center = target.copy(charPos).add(companionPos).multiplyScalar(.5);
-      const view = endingView(perspectiveCamera.aspect || 1, center);
+      const view = endingView(perspectiveCamera.aspect || 1, center, ending.azimuth);
       const duration = settings.reducedMotion ? .8 : ENDING_PULLBACK_SECONDS;
       const t = ending.phase === 'complete' ? 1 : ease((performance.now() - ending.startedAt) / (duration * 1000));
       camera.position.lerpVectors(ending.cameraPosition, view.position, t);
@@ -144,7 +152,7 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     }
     const ceremony = cakeCeremonyActive(cake);
     const halfHorizontalFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov / 2)) * perspectiveCamera.aspect);
-    const ceremonyDistance = Math.max(4.4, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
+    const ceremonyDistance = Math.max(cake.phase === 'constellation' || cake.phase === 'heartHold' ? 5.8 : 4.4, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
     p.distance = THREE.MathUtils.damp(p.distance, ceremony ? ceremonyDistance : ending.phase === 'cake' ? (settings.phone && settings.portrait ? 5.5 : settings.compact ? 6.2 : 6.8) : settings.distance, 5, dt);
     p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
     p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
@@ -158,7 +166,7 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     target.x += (pairOffset.current.x - sin * .35) * p.compact;
     target.z += (pairOffset.current.z - cos * .35) * p.compact;
     cakeBlend.current = THREE.MathUtils.damp(cakeBlend.current, ceremony ? 1 : 0, 3, dt);
-    cakeFocus.copy(charPos).add(companionPos).multiplyScalar(.5); cakeFocus.y = 1.05;
+    cakeFocus.copy(charPos).add(companionPos).multiplyScalar(.5); cakeLookHeight.current = THREE.MathUtils.damp(cakeLookHeight.current, cake.phase === 'constellation' || cake.phase === 'heartHold' ? 2 : 1.05, 2, dt); cakeFocus.y = cakeLookHeight.current;
     target.lerp(cakeFocus, cakeBlend.current);
     const minX = MUSEUM_BOUNDS.minX + CAMERA.wallMargin, maxX = MUSEUM_BOUNDS.maxX - CAMERA.wallMargin;
     const minZ = MUSEUM_BOUNDS.minZ + CAMERA.wallMargin, maxZ = MUSEUM_BOUNDS.maxZ - CAMERA.wallMargin;
@@ -197,7 +205,7 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     const perspective = camera as THREE.PerspectiveCamera;
     const nextFov = THREE.MathUtils.damp(perspective.fov, settings.fov, 6, dt);
     if (Math.abs(nextFov - perspective.fov) > .005) { perspective.fov = nextFov; perspective.updateProjectionMatrix(); }
-    if (kiss.active) {
+    if (kiss.active && ending.phase !== 'cake') {
       const t = kiss.elapsed;
       const gifting = kiss.mode === 'bouquet';
       const blend = ease(t / (gifting ? 1.1 : 1.8)) * (1 - ease((t - (gifting ? 9.4 : 6.2)) / (gifting ? 1 : 2)));

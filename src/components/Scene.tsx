@@ -1,5 +1,5 @@
 import LittleUniverse from './LittleUniverse';
-import { CAKE } from '../lib/cake';
+import { CAKE, cakeCeremonyActive } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import type { EndingState, EndingPhase } from '../lib/ending';
 import { useMemo, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import { BOOKS } from '../lib/books';
 import IndoorGalleries from './IndoorGalleries';
 import PhotoFrame from './PhotoFrame';
 import Character from './Character';
+import HeartConstellation from './HeartConstellation';
 import CameraRig from './CameraRig';
 import { PHOTOS, ROOM } from '../config';
 import type { ControlState, CameraState } from '../controls';
@@ -46,11 +47,12 @@ interface Props {
   kiss: KissState;
   onKissComplete: () => void;
   onBouquetStart: () => boolean;
+  onCakeKissStart: () => boolean;
   settings: ExperienceSettings;
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
+export default function Scene({ ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, onCakeKissStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(1.05, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
@@ -99,6 +101,7 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
         cameraState.azimuth = Math.atan2(charPos.x - CAKE.position.x, charPos.z - CAKE.position.z) - .35; cameraState.pitch = .35;
         onCakeChange(); onEndingChange('cake');
       }
+      if (kiss.mode === 'kiss' && cake.phase === 'kissing') { cake.phase = 'constellation'; cake.elapsed = 0; onCakeChange(); }
       onKissComplete();
     }
   }, -3);
@@ -112,7 +115,7 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
     } else if (cake.phase === 'walking' && cake.npcArrived) {
       cake.phase = 'inviting'; onCakeChange();
     }
-    if (['positioning', 'lighting', 'wish', 'blowing'].includes(cake.phase)) {
+    if (cakeCeremonyActive(cake)) {
       cake.elapsed += Math.min(delta, .05);
       const advance = (phase: typeof cake.phase) => { cake.phase = phase; cake.elapsed = 0; onCakeChange(); };
       if (cake.phase === 'positioning' && cake.positioned) advance('lighting');
@@ -125,8 +128,24 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
       } else if (cake.phase === 'blowing') {
         cake.eyesClosed = ease(cake.elapsed / .5) * (1 - ease((cake.elapsed - 2) / .7));
         cake.flame = 1 - ease((cake.elapsed - 1.2) / .8);
-        if (cake.elapsed >= 3.2) { cake.lit = 0; cake.eyesClosed = 0; advance('finished'); }
+        if (cake.elapsed >= 3.2) { cake.lit = 0; cake.eyesClosed = 0; advance('kissPause'); }
       }
+    }
+    if (cake.phase === 'kissPause' && cake.elapsed >= .8) {
+      cake.phase = 'aligning'; cake.elapsed = 0; onCakeChange();
+    } else if (cake.phase === 'aligning' && cake.alignmentReady && onCakeKissStart()) {
+      cake.phase = 'kissing'; cake.elapsed = 0; onCakeChange();
+    } else if (cake.phase === 'constellation') {
+      cake.heartProgress = ease(cake.elapsed / (settings.reducedMotion ? 2 : 5.5));
+      if (cake.heartProgress === 1) { cake.phase = 'heartHold'; cake.elapsed = 0; onCakeChange(); }
+    }
+    if (cake.phase === 'heartHold' && cake.heartProgress === 1 && cake.elapsed >= 2.4) {
+      // Actual formation completion enters heartHold; only its completed glow
+      // can hand off to the original pullback/message controller, once.
+      ending.center.copy(charPos).add(companionPos).multiplyScalar(.5);
+      ending.azimuth = cameraState.smoothedAzimuth;
+      ending.startedAt = performance.now(); ending.cameraCaptured = false;
+      onEndingChange('pullback');
     }
     const nearby = cake.phase === 'inviting' && charPos.distanceTo(CAKE.position) < CAKE.interactionRange + (cake.nearby ? .18 : 0);
     if (nearby !== cake.nearby) { cake.nearby = nearby; onCakeChange(); }
@@ -190,6 +209,7 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
       </group>
       {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
       <Character ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      {activeRoomIndex === 3 && <HeartConstellation ending={ending} cake={cake} charPos={charPos} companionPos={companionPos} reducedMotion={settings.reducedMotion || simpleTransitions} />}
       <CameraRig cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );

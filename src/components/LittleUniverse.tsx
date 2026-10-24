@@ -29,13 +29,13 @@ export default function LittleUniverse({ ending, cake, memories, compact, reduce
   const formedAt = useRef(performance.now());
   const composition = useMemo(() => {
     const aspect = size.width / size.height;
-    const view = endingView(aspect, new THREE.Vector3());
+    const view = endingView(aspect, new THREE.Vector3(), ending.azimuth);
     const camera = new THREE.PerspectiveCamera(view.fov, aspect, .1, 180);
     camera.position.copy(view.position); camera.lookAt(view.target);
     camera.setViewOffset(aspect * 1000, 1000, 0, view.shiftY * 1000, aspect * 1000, 1000);
     camera.updateMatrixWorld();
     return { camera, depth: view.distance + 1.5, landscape: aspect > 1.7, shortPortrait: aspect < .8 && size.height < 650 };
-  }, [size.width, size.height]);
+  }, [size.width, size.height, ending.azimuth]);
   useEffect(() => {
     const fog = scene.fog; scene.fog = null;
     return () => { scene.fog = fog; };
@@ -61,7 +61,7 @@ export default function LittleUniverse({ ending, cake, memories, compact, reduce
   }), [memories, composition]);
   useFrame(() => {
     if (world.current) { const t = reducedMotion ? 1 : ease((performance.now() - formedAt.current) / 1700); world.current.scale.setScalar(.92 + .08 * t); }
-    if (cards.current) { cards.current.visible = endingFrozen(ending); cards.current.scale.setScalar(reducedMotion ? 1 : .88 + .12 * ease((performance.now() - ending.startedAt) / 4500)); }
+    if (cards.current) { cards.current.position.set(ending.center.x - CENTER, 0, ending.center.z); cards.current.visible = endingFrozen(ending); cards.current.scale.setScalar(reducedMotion ? 1 : .88 + .12 * ease((performance.now() - ending.startedAt) / 4500)); }
 
   });
   return <group name="our-little-universe" position={[CENTER, 0, 0]}>

@@ -27,6 +27,7 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   const companionVelocity = useRef(new THREE.Vector3());
   const kissPose = useRef(0);
   const kissContact = useRef(new THREE.Vector3());
+  const alignmentWaypoint = useRef(new THREE.Vector3());
   const wishEyes = useRef(0);
   const momentPath = useRef(createMomentPath());
   const kissHands = useRef<[THREE.Vector3, THREE.Vector3]>([new THREE.Vector3(), new THREE.Vector3()]);
@@ -116,6 +117,11 @@ export default function Character({ ending, cake, transition, controls, cameraSt
         setGiftHands(group.current, receiver.current, accept);
         if (t >= 5.6) kiss.bouquetReceived = true;
       }
+      if (!gifting && kiss.bouquetReceived) {
+        bouquet.current.position.set(0, .68, .37).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(group.current.position);
+        bouquet.current.rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y); bouquet.current.visible = true;
+        setGiftHands(group.current, receiver.current, 1);
+      }
       velocity.current.set(0, 0, 0); companionVelocity.current.set(0, 0, 0);
       charPos.copy(group.current.position);
       companionPos.copy(companion.current.position);
@@ -132,9 +138,47 @@ export default function Character({ ending, cake, transition, controls, cameraSt
       velocity.current.set(0, 0, 0); motion.current = 0;
       const yaw = Math.atan2(CAKE.position.x - actor.position.x, CAKE.position.z - actor.position.z);
       actor.rotation.y += angle(yaw, actor.rotation.y) * (1 - Math.exp(-9 * delta));
-      const boyYaw = Math.atan2(CAKE.position.x - boy.position.x, CAKE.position.z - boy.position.z);
+      if (cake.phase === 'aligning') {
+        const radial = alignmentWaypoint.current.copy(actor.position).sub(CAKE.position).setY(0).normalize();
+        if (!cake.alignmentPlanned) {
+          const tx = radial.z, tz = -radial.x;
+          const sign = (boy.position.x - actor.position.x) * tx + (boy.position.z - actor.position.z) * tz < 0 ? -1 : 1;
+          cake.alignmentTarget.copy(actor.position).add(new THREE.Vector3(tx * sign, 0, tz * sign).multiplyScalar(1.08));
+          constrainGardenPosition(cake.alignmentTarget);
+          if (cake.alignmentTarget.distanceTo(actor.position) < 1.04 || cake.alignmentTarget.distanceTo(CAKE.position) < 1.02) {
+            cake.alignmentTarget.copy(actor.position).add(new THREE.Vector3(-tx * sign, 0, -tz * sign).multiplyScalar(1.08));
+            constrainGardenPosition(cake.alignmentTarget);
+          }
+          if (boy.position.distanceTo(actor.position) <= 1.3) { cake.alignmentTarget.copy(boy.position); cake.alignmentStage = 2; }
+          cake.alignmentPlanned = true;
+        }
+        const destination = cake.alignmentTarget;
+        const radius = Math.max(1.65, destination.distanceTo(CAKE.position) + .06);
+        const currentRadius = boy.position.distanceTo(CAKE.position);
+        const currentAngle = Math.atan2(boy.position.x - CAKE.position.x, boy.position.z - CAKE.position.z);
+        const goalAngle = Math.atan2(destination.x - CAKE.position.x, destination.z - CAKE.position.z);
+        const turn = angle(goalAngle, currentAngle);
+        if (cake.alignmentStage === 0 && (currentRadius >= radius - .03 || cake.elapsed > .9)) cake.alignmentStage = 1;
+        if (cake.alignmentStage === 1 && Math.abs(turn) < .02) cake.alignmentStage = 2;
+        const next = cake.alignmentStage === 0 ? currentAngle : currentAngle + THREE.MathUtils.clamp(turn, -.20, .20);
+        const waypoint = alignmentWaypoint.current;
+        if (cake.alignmentStage === 2) waypoint.copy(destination);
+        else waypoint.set(CAKE.position.x + Math.sin(next) * radius, 0, CAKE.position.z + Math.cos(next) * radius);
+        companionVelocity.current.copy(waypoint).sub(boy.position);
+        const gap = companionVelocity.current.length();
+        companionVelocity.current.setLength(Math.min(.95, gap * 5));
+        const oldX = boy.position.x, oldZ = boy.position.z;
+        boy.position.addScaledVector(companionVelocity.current, delta);
+        constrainCakePosition(boy.position); constrainGardenPosition(boy.position);
+        waypoint.copy(boy.position).sub(actor.position);
+        if (waypoint.length() < 1.04) boy.position.copy(actor.position).add(waypoint.setLength(1.04));
+        companionMotion.current = Math.hypot(boy.position.x - oldX, boy.position.z - oldZ) / Math.max(delta, .001);
+        cake.alignmentReady = cake.alignmentStage === 2 && boy.position.distanceTo(destination) < .025;
+      } else { companionVelocity.current.set(0, 0, 0); companionMotion.current = 0; }
+      const boyYaw = cake.phase === 'aligning' && companionMotion.current > .1
+        ? Math.atan2(companionVelocity.current.x, companionVelocity.current.z)
+        : Math.atan2(CAKE.position.x - boy.position.x, CAKE.position.z - boy.position.z);
       boy.rotation.y += angle(boyYaw, boy.rotation.y) * (1 - Math.exp(-9 * delta));
-      companionVelocity.current.set(0, 0, 0); companionMotion.current = 0;
       cake.positioned = Math.abs(angle(yaw, actor.rotation.y)) < .06 && Math.abs(angle(boyYaw, boy.rotation.y)) < .06;
       heading.current = actor.rotation.y;
       charPos.copy(actor.position); companionPos.copy(boy.position);

@@ -80,7 +80,7 @@ export default function App() {
 
   const [momentHint, setMomentHint] = useState(false);
   const startMoment = (mode: 'kiss' | 'photo' | 'bouquet') => {
-    if (kiss.active || transition.active || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet')) return false;
+    if (kiss.active || transition.active || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet' && !(mode === 'kiss' && cake.phase === 'aligning'))) return false;
     if (mode !== 'photo' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
     setMomentHint(false);
     if (mode === 'bouquet') onEndingChange('bouquet');
@@ -127,7 +127,7 @@ export default function App() {
         dpr={[1, batterySaver ? 1 : settings.dpr]}
       >
         <fog attach="fog" args={['#382234', 16, 32]} />
-        <Scene ending={ending} cake={cake} onCakeChange={onCakeChange} memories={memories} onEndingChange={onEndingChange} transition={transition} simpleTransitions={batterySaver} onPortalEnter={enterPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={openPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
+        <Scene ending={ending} cake={cake} onCakeChange={onCakeChange} memories={memories} onEndingChange={onEndingChange} transition={transition} simpleTransitions={batterySaver} onPortalEnter={enterPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={openPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onCakeKissStart={() => startMoment('kiss')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
       </Canvas>
       <div className="museum-hud">
         <div className={`museum-top-left ${inEnding && !exploringCake ? 'ending-hidden' : ''}`}>

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GARDEN_CENTER_X } from './gardenLayout';
 
-export type CakePhase = 'hidden' | 'revealing' | 'walking' | 'inviting' | 'positioning' | 'lighting' | 'wish' | 'blowing' | 'finished';
+export type CakePhase = 'hidden' | 'revealing' | 'walking' | 'inviting' | 'positioning' | 'lighting' | 'wish' | 'blowing' | 'finished' | 'kissPause' | 'aligning' | 'kissing' | 'constellation' | 'heartHold';
 export const CAKE = {
   position: new THREE.Vector3(GARDEN_CENTER_X - .35, 0, -4.6),
   npcPosition: new THREE.Vector3(GARDEN_CENTER_X - 1.5, 0, -3.8),
@@ -10,10 +10,11 @@ export const CAKE = {
 export const createCakeState = () => ({
   phase: 'hidden' as CakePhase, elapsed: 0, reveal: 0,
   npcArrived: false, nearby: false, acknowledged: false,
-  positioned: false, lit: 0, flame: 0, eyesClosed: 0, canBlow: false,
+  positioned: false, lit: 0, flame: 0, eyesClosed: 0, canBlow: false, alignmentReady: false, alignmentStage: 0, alignmentPlanned: false,
+  alignmentTarget: new THREE.Vector3(), heartProgress: 0,
 });
 export type CakeState = ReturnType<typeof createCakeState>;
-export const cakeControlsReady = (cake: CakeState) => cake.phase === 'inviting' || cake.phase === 'finished';
+export const cakeControlsReady = (cake: CakeState) => cake.phase === 'inviting';
 export const cakeUi = (cake: CakeState) => ({ phase: cake.phase, nearby: cake.nearby, acknowledged: cake.acknowledged, canBlow: cake.canBlow });
 // Shared by girl and NPC: the pedestal remains solid before it is discovered.
 export function constrainCakePosition(position: { x: number; z: number }) {
@@ -26,7 +27,7 @@ export function constrainCakePosition(position: { x: number; z: number }) {
   }
 }
 
-export const cakeCeremonyActive = (cake: CakeState) => ['positioning', 'lighting', 'wish', 'blowing'].includes(cake.phase);
+export const cakeCeremonyActive = (cake: CakeState) => ['positioning', 'lighting', 'wish', 'blowing', 'kissPause', 'aligning', 'kissing', 'constellation', 'heartHold'].includes(cake.phase);
 export function startCakeCeremony(cake: CakeState) {
   if (cake.phase !== 'inviting' || !cake.nearby) return false;
   cake.phase = 'positioning'; cake.elapsed = 0; cake.nearby = false; cake.acknowledged = true;
