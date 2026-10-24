@@ -13,10 +13,14 @@ await call('Runtime.enable');await boot(false);
 assert.ok(await ev(`matchMedia('(any-hover: hover) and (any-pointer: fine)').matches`),'real mouse capability detected');
 const before=await heading(), bodyYaw=await ev('actors[0].rotation.y');
 await move(550,240);await move(580,245);await move(620,250);await wait(550);
-assert.ok(Math.abs(await heading()-before)>.12,'moving mouse without buttons looks around');assert.ok(Math.abs(await ev('actors[0].rotation.y')-bodyYaw)<.02,'mouse alone leaves character facing unchanged');
-const stopped=await heading();await wait(450);assert.ok(Math.abs(await heading()-stopped)<.01,'no continuous turn when mouse stops');
+assert.ok(Math.abs(await heading()-before)<.01,'moving mouse without buttons leaves camera still');
+await call('Input.dispatchMouseEvent',{type:'mousePressed',x:550,y:240,button:'left',clickCount:1});
+await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:640,y:260,buttons:1});
+await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:640,y:260,button:'left',clickCount:1});await wait(550);
+assert.ok(Math.abs(await heading()-before)>.12,'holding and dragging rotates camera');assert.ok(Math.abs(await ev('actors[0].rotation.y')-bodyYaw)<.02,'mouse alone leaves character facing unchanged');
+const stopped=await heading();await move(720,310);await move(790,340);await wait(450);assert.ok(Math.abs(await heading()-stopped)<.01,'camera stays still after release while cursor moves');
 await ev('window.start=actors[0].position.clone();window.forward=s.camera.getWorldDirection(new T.Vector3()).setY(0).normalize()');await key('w',true);await wait(550);await key('w',false);await wait(200);assert.ok(await ev('actors[0].position.clone().sub(start).normalize().dot(forward)')>.96,'WASD remains camera-relative');
-console.log('PASS no-button mouse look, smoothing, stable idle heading and camera-relative WASD');
+console.log('PASS hold-and-drag camera, no hover rotation, stable idle heading and camera-relative WASD');
 const menuPoint=await ev(`(()=>{const r=document.querySelector('button[aria-label=\"Open museum menu\"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);await move(menuPoint.x,menuPoint.y);await wait(200);const ui=await heading();await move(menuPoint.x+2,menuPoint.y+2);await wait(250);assert.ok(Math.abs(await heading()-ui)<.04,'menu hover does not orbit');
 await click('button[aria-label="Open museum menu"]');await wait(250);const locked=await heading();await move(600,300);await move(750,330);await wait(300);assert.ok(Math.abs(await heading()-locked)<.01,'menu locks mouse look');await click('button[aria-label="Close museum menu"]');
 // Reset through the real intro and test a photo under the cursor.

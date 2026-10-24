@@ -9,6 +9,7 @@ import Chibi from './Chibi';
 import RoseBouquet from './RoseBouquet';
 import { createBouquetPose, createGiftGrip } from '../lib/bouquet';
 import { ease } from '../lib/kiss';
+import { createMomentPath, planMomentPath, sampleMomentPosition, momentFacing } from '../lib/momentPath';
 import type { KissState } from '../lib/kiss';
 import { constrainMuseumPosition, museumRoomAt, PASSAGE, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { RoomTransitionState } from '../lib/roomTransition';
@@ -18,9 +19,11 @@ export default function Character({ ending, transition, controls, cameraState, c
   const velocity = useRef(new THREE.Vector3()), follow = useRef(new THREE.Vector3());
   const motion = useRef(0), companionMotion = useRef(0), heading = useRef(0);
   const followSide = useRef(1);
+  const rejoiningFormation = useRef(false);
   const lastRelocation = useRef(0);
   const companionVelocity = useRef(new THREE.Vector3());
   const kissPose = useRef(0);
+  const momentPath = useRef(createMomentPath());
   const kissHands = useRef<[THREE.Vector3, THREE.Vector3]>([new THREE.Vector3(), new THREE.Vector3()]);
   const photoPose = useRef(0);
   const bouquet = useRef(createBouquetPose());
@@ -41,7 +44,7 @@ export default function Character({ ending, transition, controls, cameraState, c
       const direction = transition.direction, x = MUSEUM_ROOMS[transition.to].centerX - direction * (ROOM.width / 2 - 2.8);
       group.current.position.set(x, 0, direction * .525);
       companion.current.position.set(x - direction * .35, 0, -direction * .525);
-      heading.current = direction * Math.PI / 2; followSide.current = 1;
+      heading.current = direction * Math.PI / 2; followSide.current = 1; rejoiningFormation.current = false;
       group.current.rotation.y = companion.current.rotation.y = heading.current;
       velocity.current.set(0, 0, 0); companionVelocity.current.set(0, 0, 0);
       motion.current = companionMotion.current = 0;
@@ -53,6 +56,7 @@ export default function Character({ ending, transition, controls, cameraState, c
       const state = saved.current;
       if (state.sequence !== kiss.sequence) {
         state.sequence = kiss.sequence;
+        rejoiningFormation.current = true;
         state.player.copy(group.current.position); state.partner.copy(companion.current.position);
         state.playerYaw = group.current.rotation.y; state.partnerYaw = companion.current.rotation.y;
         kiss.center.copy(state.player).add(state.partner).multiplyScalar(.5);
@@ -61,21 +65,26 @@ export default function Character({ ending, transition, controls, cameraState, c
         kiss.center.x = room.centerX + THREE.MathUtils.clamp(kiss.center.x - room.centerX, photo ? -3.5 : -7, photo ? 3.5 : 7);
         kiss.center.z = THREE.MathUtils.clamp(kiss.center.z, photo ? -1 : -4, photo ? 1 : 4);
         kiss.axis.set(Math.cos(cameraState.smoothedAzimuth), 0, -Math.sin(cameraState.smoothedAzimuth));
+        planMomentPath(momentPath.current, state.player, state.partner, kiss.center, kiss.axis, photo ? 1 : kiss.mode === 'bouquet' ? .94 : .73);
+        // Resume following on the partner's original side after the return,
+        // rather than immediately cutting across the player to a fixed side.
+        followSide.current = (state.partner.x - state.player.x) * Math.cos(state.playerYaw) -
+          (state.partner.z - state.player.z) * Math.sin(state.playerYaw) < 0 ? -1 : 1;
       }
       const gifting = kiss.mode === 'bouquet';
       const t = kiss.elapsed, approach = ease(t / 1.8), retreat = gifting ? ease((t - 8.3) / 1.5) : ease((t - 4.6) / 1.6);
+      const progress = approach * (1 - retreat);
       const faceYaw = Math.atan2(kiss.axis.x, kiss.axis.z);
       const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
-      const pose = (actor: THREE.Group, origin: THREE.Vector3, yaw: number, side: number, targetYaw: number, speed: { current: number }) => {
+      const pose = (actor: THREE.Group, yaw: number, side: number, targetYaw: number, speed: { current: number }) => {
         const oldX = actor.position.x, oldZ = actor.position.z;
-        state.target.copy(kiss.center).addScaledVector(kiss.axis, side * (kiss.mode === 'photo' ? .5 : gifting ? .47 : .365));
-        actor.position.lerpVectors(origin, state.target, approach).lerp(origin, retreat);
-        actor.rotation.y = yaw + angle(targetYaw, yaw) * approach * (1 - retreat);
+        sampleMomentPosition(momentPath.current, progress, side, actor.position);
+        actor.rotation.y = yaw + angle(targetYaw, yaw) * momentFacing(progress);
         speed.current = Math.hypot(actor.position.x - oldX, actor.position.z - oldZ) / Math.max(delta, .001);
       };
       const photoYaw = Math.atan2(-kiss.axis.z, kiss.axis.x);
-      pose(group.current, state.player, state.playerYaw, -1, kiss.mode === 'photo' ? photoYaw + .06 : faceYaw, motion);
-      pose(companion.current, state.partner, state.partnerYaw, 1, kiss.mode === 'photo' ? photoYaw - .06 : faceYaw + Math.PI, companionMotion);
+      pose(group.current, state.playerYaw, -1, kiss.mode === 'photo' ? photoYaw + .06 : faceYaw, motion);
+      pose(companion.current, state.partnerYaw, 1, kiss.mode === 'photo' ? photoYaw - .06 : faceYaw + Math.PI, companionMotion);
       // Shared world-space grip points keep both pairs of hands together,
       // even when the couple faces a different direction in another room.
       kissHands.current.forEach((hand, index) => hand.copy(kiss.center).addScaledVector(
@@ -158,6 +167,20 @@ export default function Character({ ending, transition, controls, cameraState, c
       // Enter the passage centrally so the partner cannot get caught on its jamb.
       const aligned = Math.abs(companion.current.position.z) < PASSAGE.width / 2 - 1;
       follow.current.set(partnerRoom.centerX + direction * (aligned ? ROOM.width / 2 + PASSAGE.length : ROOM.width / 2 - 1.2), 0, 0);
+    }
+    if (rejoiningFormation.current) {
+      if (companion.current.position.distanceTo(follow.current) < .04) rejoiningFormation.current = false;
+      else {
+        // Rejoin the walking formation around the player, never by taking a
+        // chord through her when the original position was in front of her.
+        const dx = companion.current.position.x - charPos.x, dz = companion.current.position.z - charPos.z;
+        const currentAngle = Math.atan2(dx, dz);
+        const targetAngle = Math.atan2(follow.current.x - charPos.x, follow.current.z - charPos.z);
+        const nextAngle = currentAngle + THREE.MathUtils.clamp(angle(targetAngle, currentAngle), -.32, .32);
+        const radius = Math.max(1.12, THREE.MathUtils.lerp(Math.hypot(dx, dz), follow.current.distanceTo(charPos), .25));
+        follow.current.set(charPos.x + Math.sin(nextAngle) * radius, 0, charPos.z + Math.cos(nextAngle) * radius);
+        clamp(follow.current);
+      }
     }
     const oldX = companion.current.position.x, oldZ = companion.current.position.z;
     follow.current.sub(companion.current.position);
