@@ -112,6 +112,22 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
     } else if (cake.phase === 'walking' && cake.npcArrived) {
       cake.phase = 'inviting'; onCakeChange();
     }
+    if (['positioning', 'lighting', 'wish', 'blowing'].includes(cake.phase)) {
+      cake.elapsed += Math.min(delta, .05);
+      const advance = (phase: typeof cake.phase) => { cake.phase = phase; cake.elapsed = 0; onCakeChange(); };
+      if (cake.phase === 'positioning' && cake.positioned) advance('lighting');
+      if (cake.phase === 'lighting') {
+        cake.lit = Math.min(3, Math.floor(cake.elapsed / .65));
+        cake.flame = Math.min(1, cake.elapsed * 2);
+        if (cake.elapsed >= 2.6) advance('wish');
+      } else if (cake.phase === 'wish' && cake.elapsed >= 4 && !cake.canBlow) {
+        cake.canBlow = true; onCakeChange();
+      } else if (cake.phase === 'blowing') {
+        cake.eyesClosed = ease(cake.elapsed / .5) * (1 - ease((cake.elapsed - 2) / .7));
+        cake.flame = 1 - ease((cake.elapsed - 1.2) / .8);
+        if (cake.elapsed >= 3.2) { cake.lit = 0; cake.eyesClosed = 0; advance('finished'); }
+      }
+    }
     const nearby = cake.phase === 'inviting' && charPos.distanceTo(CAKE.position) < CAKE.interactionRange + (cake.nearby ? .18 : 0);
     if (nearby !== cake.nearby) { cake.nearby = nearby; onCakeChange(); }
   }, -2.5);
@@ -174,7 +190,7 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
       </group>
       {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
       <Character ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
-      <CameraRig ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
+      <CameraRig cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { createCakeState, cakeControlsReady, cakeUi } from './lib/cake';
+import { createCakeState, cakeControlsReady, cakeUi, startCakeCeremony, blowCakeCandles } from './lib/cake';
 import { createEnding, memoryKey } from './lib/ending';
 import type { EndingPhase } from './lib/ending';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,7 +39,7 @@ export default function App() {
   const [memories, setMemories] = useState<PhotoConfig[]>([]);
   const [story, setStory] = useState(0);
   const inEnding = endingPhase !== 'exploring';
-  const exploringCake = endingPhase === 'cake' && cakeState.phase === 'inviting';
+  const exploringCake = endingPhase === 'cake' && cakeControlsReady(cake);
   const endingLocked = inEnding && !exploringCake;
   const onEndingChange = (phase: EndingPhase) => { ending.phase = phase; setEndingPhase(phase); };
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -164,12 +164,16 @@ export default function App() {
         {isKissing && !isPosing && <div className="cinema-bars" aria-hidden="true" />}
         {isGivingBouquet && <p className="bouquet-caption" role="status">For all our tomorrows.</p>}
         {exploringCake && !selectedPhoto && !menuOpen && <>
-          {!cakeState.nearby && !showHint && <p className="cake-invitation" role="status">Come here, I have one more little surprise for you. &#9825;</p>}
+          {cakeState.phase === 'inviting' && !cakeState.nearby && !showHint && <p className="cake-invitation" role="status">Come here, I have one more little surprise for you. &#9825;</p>}
           {cakeState.nearby && <div className="cake-interaction">
-            <button type="button" className="hud-button cake-wish-button" aria-label="Make a Little Wish" aria-describedby={cakeState.acknowledged ? 'cake-placeholder' : undefined} onClick={() => { if (cakeControlsReady(cake) && cake.nearby && !cake.acknowledged) { cake.acknowledged = true; onCakeChange(); } }}>Make a Little Wish &#10024;</button>
-            {cakeState.acknowledged && <p id="cake-placeholder" role="status">The wish ceremony is coming in the next chapter.</p>}
+            <button type="button" className="hud-button cake-wish-button" aria-label="Make a Little Wish"  onClick={() => { if (startCakeCeremony(cake)) onCakeChange(); }}>Make a Little Wish &#10024;</button>
+
           </div>}
         </>}
+        {endingPhase === 'cake' && ['wish', 'blowing'].includes(cakeState.phase) && <div className="cake-ceremony-ui">
+          <p className="cake-wish-message" role="status">Close your eyes. If you could make one wish for us, what would it be?</p>
+          {cakeState.phase === 'wish' && cakeState.canBlow && <button type="button" className="hud-button cake-blow-button" onClick={() => { if (blowCakeCandles(cake)) onCakeChange(); }}>Blow Out Candles &#10024;</button>}
+        </div>}
         <div className={`museum-joystick ${blocked ? 'invisible' : ''}`}><VirtualJoystick controls={controls} disabled={blocked} /></div>
       </div>
       <div ref={node => { transition.overlay = node; }} className={`room-transition-overlay ${isTransitioning ? 'is-active' : ''}`} aria-hidden={!isTransitioning}>

@@ -148,3 +148,10 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 .cake-interaction p { margin: 8px 0 0; padding: 8px 10px; border-radius: 12px; background: #251c2dd9; color: #f4dfcc; font-size: 11px; line-height: 1.6; }
 .cake-memories summary { padding: 12px 0; color: #f9dfe5; font-size: 13px; cursor: pointer; }
 @media (max-height: 500px) and (orientation: landscape) { .ending-theme .museum-location { display: none; } .cake-invitation { top: max(14px, env(safe-area-inset-top)); width: min(330px, calc(100% - 300px)); padding: 8px 14px; font-size: 11px; } .cake-wish-button { min-height: 48px; } }
+
+.cake-ceremony-ui { position: absolute; top: max(76px, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%); width: min(420px, calc(100% - 32px)); text-align: center; pointer-events: none; }
+.cake-wish-message { margin: 0; padding: 14px 20px; border-radius: 18px; background: #251c2ddd; color: #ffe8ce; font-size: 14px; line-height: 1.7; animation: ceremony-appear .7s ease both; }
+.cake-blow-button { pointer-events: auto; margin: 14px auto 0; min-height: 52px; padding: 12px 22px; justify-content: center; animation: ceremony-appear .5s ease both; }
+@keyframes ceremony-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (max-height: 500px) { .cake-ceremony-ui { top: max(12px, env(safe-area-inset-top)); width: min(420px, calc(100% - 150px)); } .cake-wish-message { padding: 8px 14px; font-size: 12px; } .cake-blow-button { margin-top: 8px; min-height: 48px; } }
+@media (prefers-reduced-motion: reduce) { .cake-wish-message, .cake-blow-button { animation: none; } }

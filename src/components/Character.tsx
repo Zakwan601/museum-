@@ -1,4 +1,4 @@
-import { CAKE, constrainCakePosition } from '../lib/cake';
+import { CAKE, constrainCakePosition, cakeCeremonyActive, ceremonyWaypoint } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import { constrainGardenPosition } from '../lib/gardenLayout';
 import { endingFrozen } from '../lib/ending';
@@ -26,6 +26,8 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   const lastRelocation = useRef(0);
   const companionVelocity = useRef(new THREE.Vector3());
   const kissPose = useRef(0);
+  const wishEyes = useRef(0);
+  const ceremonyTarget = useRef(new THREE.Vector3());
   const momentPath = useRef(createMomentPath());
   const kissHands = useRef<[THREE.Vector3, THREE.Vector3]>([new THREE.Vector3(), new THREE.Vector3()]);
   const photoPose = useRef(0);
@@ -115,6 +117,36 @@ export default function Character({ ending, cake, transition, controls, cameraSt
     }
     kissPose.current = 0;
     photoPose.current = 0;
+    wishEyes.current = cake.eyesClosed;
+    if (cakeCeremonyActive(cake)) {
+      const actor = group.current, boy = companion.current;
+      const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
+      const target = ceremonyWaypoint(cake, actor.position, ceremonyTarget.current);
+      const gap = actor.position.distanceTo(target);
+      const speed = cake.phase === 'positioning' ? Math.min(1.05, gap * 4) : 0;
+      velocity.current.copy(target).sub(actor.position).normalize().multiplyScalar(speed);
+      const oldX = actor.position.x, oldZ = actor.position.z;
+      actor.position.addScaledVector(velocity.current, delta);
+      constrainCakePosition(actor.position); constrainGardenPosition(actor.position);
+      // Keep the same solid NPC separation used during normal cake exploration.
+      target.copy(actor.position).sub(boy.position);
+      if (target.length() < 1.04) actor.position.copy(boy.position).add(target.setLength(1.04));
+      motion.current = Math.hypot(actor.position.x - oldX, actor.position.z - oldZ) / Math.max(delta, .001);
+      const yaw = motion.current > .08 ? Math.atan2(velocity.current.x, velocity.current.z) : Math.atan2(CAKE.position.x - actor.position.x, CAKE.position.z - actor.position.z);
+      actor.rotation.y += angle(yaw, actor.rotation.y) * (1 - Math.exp(-9 * delta));
+      const boyYaw = Math.atan2(CAKE.position.x - boy.position.x, CAKE.position.z - boy.position.z);
+      boy.rotation.y += angle(boyYaw, boy.rotation.y) * (1 - Math.exp(-9 * delta));
+      companionVelocity.current.set(0, 0, 0); companionMotion.current = 0;
+      cake.positioned = cake.route === 2 && gap < .025 && Math.abs(angle(yaw, actor.rotation.y)) < .06;
+      heading.current = actor.rotation.y;
+      charPos.copy(actor.position); companionPos.copy(boy.position);
+      if (kiss.bouquetReceived) {
+        bouquet.current.position.set(0, .68, .37).applyAxisAngle(THREE.Object3D.DEFAULT_UP, actor.rotation.y).add(actor.position);
+        bouquet.current.rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, actor.rotation.y); bouquet.current.visible = true;
+        setGiftHands(actor, receiver.current, 1);
+      }
+      return;
+    }
     let x = controls.keyboardX + controls.joystickX;
     let y = controls.keyboardY + controls.joystickY;
     if (controls.paused) { x = 0; y = 0; velocity.current.set(0, 0, 0); }
@@ -225,7 +257,7 @@ export default function Character({ ending, cake, transition, controls, cameraSt
     const followSpeed = distance < .035 ? 0 : Math.min(atCake ? 1.15 : CHARACTER.speed * 1.35, distance * 4);
     follow.current.multiplyScalar(distance > 0 ? followSpeed / distance : 0);
     companionVelocity.current.lerp(follow.current, 1 - Math.exp(-10 * delta));
-    if (atCake && cake.phase === 'inviting') companionVelocity.current.set(0, 0, 0);
+    if (atCake && (cake.phase === 'inviting' || cake.phase === 'finished')) companionVelocity.current.set(0, 0, 0);
     companion.current.position.addScaledVector(companionVelocity.current, delta);
     clamp(companion.current.position);
     companionMotion.current = Math.hypot(companion.current.position.x - oldX, companion.current.position.z - oldZ) / Math.max(delta, .001);
@@ -246,8 +278,8 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   }, -1);
   return <>
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" giftGrip={receiver} poseSide={-1} motion={motion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi ending={ending} variant="lavender" giftGrip={giver} poseSide={1} motion={companionMotion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

@@ -72,7 +72,7 @@ export default function LittleUniverse({ ending, cake, memories, compact, reduce
     <group ref={world} name="floating-island">
       <FloatingGardenIsland />
     </group>
-    <AnniversaryCake cake={cake} />
+    <AnniversaryCake cake={cake} reducedMotion={reducedMotion || simple} />
     {!simple && !reducedMotion && <GardenAtmosphere compact={compact} />}
     <group ref={cards} name="memory-constellation" visible={false}>
       {placements.map(({ photo, original, position, scale }) => <group key={original.id} name={`memory-${original.id}`} position={position} quaternion={composition.camera.quaternion} scale={scale}>

@@ -6,7 +6,17 @@ import type { CakeState } from '../lib/cake';
 import { GARDEN_CENTER_X } from '../lib/gardenLayout';
 
 const noRaycast = () => {};
-export default function AnniversaryCake({ cake }: { cake: CakeState }) {
+export default function AnniversaryCake({ cake, reducedMotion = false }: { cake: CakeState; reducedMotion?: boolean }) {
+  const flameGeometry = useMemo(() => new THREE.SphereGeometry(1, 8, 6), []);
+  const flameMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ffdf93', transparent: true, opacity: .9, toneMapped: false }), []);
+  useEffect(() => () => { flameGeometry.dispose(); flameMaterial.dispose(); }, [flameGeometry, flameMaterial]);
+  const flames = useRef<THREE.Group>(null);
+  const candleLight = useRef<THREE.PointLight>(null);
+  const puff = useRef<THREE.Points>(null);
+  const puffGeometry = useMemo(() => {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(12 * 3), 3)); return g;
+  }, []);
+  useEffect(() => () => puffGeometry.dispose(), [puffGeometry]);
   const light = useRef<THREE.PointLight>(null);
   const lastReveal = useRef(-1);
   const pool = useRef<THREE.MeshBasicMaterial>(null);
@@ -43,6 +53,26 @@ export default function AnniversaryCake({ cake }: { cake: CakeState }) {
   }, []);
   useEffect(() => () => { palette.forEach(p => p.material.dispose()); pedestal.dispose(); poolTexture.dispose(); }, [palette, pedestal, poolTexture]);
   useFrame(() => {
+    if (flames.current) flames.current.children.forEach((flame, i) => {
+      const amount = i < cake.lit ? cake.flame : 0;
+      flame.visible = amount > .001;
+      flame.scale.set(.019 * amount, .045 * amount, .019 * amount);
+    });
+    if (candleLight.current) candleLight.current.intensity = cake.lit / 3 * cake.flame * .65;
+    if (puff.current) {
+      const t = cake.phase === 'blowing' ? (cake.elapsed - 1.5) / 1.3 : -1;
+      puff.current.visible = !reducedMotion && t > 0 && t < 1;
+      if (puff.current.visible) {
+        const positions = puffGeometry.getAttribute('position');
+        for (let i = 0; i < positions.count; i++) {
+          const a = i * 2.39996, radius = (.05 + i * .012) * t;
+          positions.setXYZ(i, Math.sin(a) * radius, 1.24 + t * (.18 + (i % 3) * .08), Math.cos(a) * radius);
+        }
+        positions.needsUpdate = true;
+        (puff.current.material as THREE.PointsMaterial).opacity = (1 - t) * .7;
+      }
+    }
+
     if (lastReveal.current === cake.reveal) return;
     lastReveal.current = cake.reveal;
     palette.forEach(p => p.material.color.copy(p.color).multiplyScalar(.008 + cake.reveal * .992));
@@ -63,6 +93,14 @@ export default function AnniversaryCake({ cake }: { cake: CakeState }) {
     <instancedMesh ref={pearls} name="cake-frosting-pearls" args={[undefined, palette[1].material, 14]}><sphereGeometry args={[1, 8, 5]} /></instancedMesh>
     <instancedMesh ref={candles} name="cake-unlit-candles" args={[undefined, palette[4].material, 3]}><cylinderGeometry args={[.017, .017, .15, 8]} /></instancedMesh>
     {[0, 1, 2].map(i => { const a = i / 3 * Math.PI * 2; return <mesh key={i} position={[Math.sin(a) * .12, 1.199, Math.cos(a) * .12]} material={palette[3].material}><cylinderGeometry args={[.003, .003, .023, 4]} /></mesh>; })}
+    <group ref={flames} name="cake-flames">
+      {[0, 1, 2].map(i => { const a = i / 3 * Math.PI * 2; return <mesh geometry={flameGeometry} material={flameMaterial} key={i} visible={false} position={[Math.sin(a) * .12, 1.24, Math.cos(a) * .12]} raycast={noRaycast}>
+      </mesh>; })}
+    </group>
+    <pointLight ref={candleLight} name="cake-candle-light" position={[0, 1.35, 0]} intensity={0} color="#ffbd69" distance={3} decay={2} castShadow={false} />
+    <points ref={puff} name="cake-wish-sparkles" geometry={puffGeometry} visible={false} frustumCulled={false} raycast={noRaycast}>
+      <pointsMaterial color="#ffe7b2" size={.025} transparent opacity={0} depthWrite={false} toneMapped={false} />
+    </points>
     <pointLight ref={light} name="cake-reveal-light" position={[.1, 1.45, .15]} color="#ffd79a" intensity={0} distance={2.65} decay={2} castShadow={false} />
     <mesh ref={shadow} name="cake-dark-surroundings" position={[0, .052, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast}>
       <planeGeometry args={[2.4, 2.4]} /><meshBasicMaterial color="#080a17" map={poolTexture} transparent opacity={.82} depthWrite={false} />

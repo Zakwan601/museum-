@@ -1,3 +1,5 @@
+import { cakeCeremonyActive } from '../lib/cake';
+import type { CakeState } from '../lib/cake';
 import { endingFrozen, endingView, ENDING_PULLBACK_SECONDS } from '../lib/ending';
 import type { EndingState, EndingPhase } from '../lib/ending';
 import { useEffect, useMemo, useRef } from 'react';
@@ -11,8 +13,8 @@ import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 import { MUSEUM_BOUNDS, cameraWallDistance, constrainMuseumPosition, museumRoomAt } from '../lib/museumLayout';
 
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
-export default function CameraRig({ ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
+interface Props { cake: CakeState; ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
+export default function CameraRig({ cake, ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
   const { camera, gl, scene } = useThree();
   const dragPointerId = useRef<number | null>(null);
   const last = useRef({ x: 0, y: 0, distance: 0, interactive: false });
@@ -124,7 +126,10 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
       lastRelocation.current = transition.relocation; anchor.current.copy(charPos);
       pairOffset.current.copy(companionPos).sub(charPos).multiplyScalar(.45);
     }
-    p.distance = THREE.MathUtils.damp(p.distance, ending.phase === 'cake' ? (settings.compact ? 6.2 : 6.8) : settings.distance, 5, dt);
+    const ceremony = cakeCeremonyActive(cake);
+    const halfHorizontalFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov / 2)) * perspectiveCamera.aspect);
+    const ceremonyDistance = Math.max(6.4, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
+    p.distance = THREE.MathUtils.damp(p.distance, ceremony ? ceremonyDistance : ending.phase === 'cake' ? (settings.phone && settings.portrait ? 5.5 : settings.compact ? 6.2 : 6.8) : settings.distance, 5, dt);
     p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
     p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
     p.compact = THREE.MathUtils.damp(p.compact, settings.compact ? 1 : 0, 5, dt);
@@ -136,6 +141,9 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
     target.copy(anchor.current); target.y += p.height;
     target.x += (pairOffset.current.x - sin * .35) * p.compact;
     target.z += (pairOffset.current.z - cos * .35) * p.compact;
+    if (ceremony) {
+      target.copy(charPos).add(companionPos).multiplyScalar(.5); target.y = 1.1;
+    }
     const minX = MUSEUM_BOUNDS.minX + CAMERA.wallMargin, maxX = MUSEUM_BOUNDS.maxX - CAMERA.wallMargin;
     const minZ = MUSEUM_BOUNDS.minZ + CAMERA.wallMargin, maxZ = MUSEUM_BOUNDS.maxZ - CAMERA.wallMargin;
     if (!exterior) constrainMuseumPosition(target, .3);
@@ -182,17 +190,15 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
       // additional entry/exit swings or changing the character animation.
       const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion ? 0 : gifting ? Math.PI * 2 * ease((t - 1.1) / 8.3) : kiss.mode === 'kiss' ? .22 * Math.sin(t * .55) : 0);
       const aspect = perspective.aspect || 1;
-      // Portrait phones get a closer shot while retaining the fit guard for
-      // both oversized heads. Desktop and landscape keep their wider framing.
-      const portraitBouquet = gifting && settings.phone && settings.portrait;
+      // Retain the wider cinematic framing throughout the single bouquet orbit.
       const desiredDistance = gifting
-        ? Math.max(portraitBouquet ? 3.9 : 4.6, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
+        ? Math.max(4.6, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
         : Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
       shotDistance.current = THREE.MathUtils.damp(shotDistance.current, desiredDistance, 6, dt);
       const distance = shotDistance.current;
       const room = museumRoomAt(kiss.center.x);
       shotTarget.copy(kiss.center); shotTarget.y = gifting ? 1.0 : 1.08;
-      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, gifting ? (portraitBouquet ? 2.25 : 2.45) : 1.85, kiss.center.z + Math.cos(orbit) * distance);
+      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, gifting ? 2.45 : 1.85, kiss.center.z + Math.cos(orbit) * distance);
       // The bouquet happens on the open island; indoor walls must not flatten
       // its circular camera path. Kiss/photo scenes retain their room bounds.
       if (!gifting) {

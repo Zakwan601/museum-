@@ -8,7 +8,7 @@ export function viewportSettings(width: number, height: number, coarse = false) 
     width, height, phone, tablet, portrait,
     compact: phone || tablet,
     fov: phone ? (portrait ? 74 : 72) : tablet ? 72 : 60,
-    distance: phone ? 4.8 : tablet ? 6 : 5,
+    distance: phone ? (portrait ? 4.2 : 4.8) : tablet ? 6 : 5,
     pitchOffset: phone ? .02 : tablet ? .04 : 0,
     lookHeight: phone ? 1.25 : tablet ? 1.3 : 1.1,
     dpr: phone ? 1.25 : tablet ? 1.5 : 1.75,
