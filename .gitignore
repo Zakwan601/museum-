@@ -7,7 +7,7 @@ dist/
 build/
 out/
 
-.chrome-check
+.chrome-check*/
 
 # Environment variables and secrets
 .env

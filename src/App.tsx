@@ -139,7 +139,7 @@ export default function App() {
           <p className="mt-2 text-xs text-rose-100/50">Use the heart to kiss, or the camera to pose together.</p>
         </section>}
         {showHint && !blocked && <div className="explore-hint" role="status">
-          <span>{settings.compact ? 'Joystick to walk. Drag the room to look.' : 'WASD to walk. Drag the room to look.'}</span>
+          <span>{settings.compact ? 'Joystick to walk. Drag the room to look.' : 'WASD to walk. Move the mouse to look.'}</span>
           <button type="button" aria-label="Dismiss instructions" onClick={() => setShowHint(false)}><X size={16} /></button>
         </div>}
         {nearbyPhoto && !blocked && <button type="button" className={`photo-prompt ${isBook(nearbyPhoto) ? '' : 'vintage-photo-prompt'}`} onClick={() => openPhoto(nearbyPhoto)} aria-label={`View ${isBook(nearbyPhoto) ? 'book' : 'photo'}: ${nearbyPhoto.title}`}>

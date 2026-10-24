@@ -14,10 +14,16 @@ export const endingFrozen = (ending: EndingState) => ending.phase === 'pullback'
 // Several galleries currently reuse sample memories. Keep one card per actual memory.
 export const memoryKey = (photo: PhotoConfig) => [photo.url, photo.title, photo.caption, photo.date].join('|');
 export const ENDING_PULLBACK_SECONDS = 6;
-export const ENDING_AZIMUTH = Math.PI / 2;
+// A gentle three-quarter view keeps both faces and the forward-held bouquet visible.
+export const ENDING_AZIMUTH = Math.PI / 2 - .25;
 export function endingView(aspect: number, center: THREE.Vector3) {
-  const fov = 55;
-  const distance = Math.max(15, 12.4 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect));
-  const target = center.clone().setY(3.5);
-  return { fov, target, position: target.clone().add(new THREE.Vector3(Math.sin(ENDING_AZIMUTH), .29, Math.cos(ENDING_AZIMUTH)).normalize().multiplyScalar(distance)) };
+  const fov = 48;
+  // Fit the island, rather than the old wide constellation. Narrow phones need
+  // horizontal breathing room; desktop and landscape keep an intimate distance.
+  const distance = Math.max(10.2, 6.4 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect));
+  const target = center.clone().setY(0);
+  return {
+    fov, target, distance, shiftY: -.10,
+    position: target.clone().add(new THREE.Vector3(Math.sin(ENDING_AZIMUTH), .30, Math.cos(ENDING_AZIMUTH)).normalize().multiplyScalar(distance)),
+  };
 }

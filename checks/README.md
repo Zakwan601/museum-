@@ -81,3 +81,17 @@ The indoor arch faces glow softly with the next gallery's palette. Walking into 
 The same Canvas, scene objects, music player, controls, interaction state and bouquet keepsake survive every transition. The exterior destination concludes the journey; replay returns to the introduction. Battery saver and reduced motion use a simple fade without particles; reduced motion also disables the subtle camera push. Particles use 14 points per active arch on mobile and 24 on desktop, without post-processing or simulation libraries. Fade timing uses elapsed real time so slow rendering does not stretch the transition.
 
 `node checks/magical-transitions.mjs` (also available as `node checks/room-navigation.mjs`) checks both-character proximity, automatic threshold entry, opaque relocation, 2.6-second timing, particles, indoor connections in both directions, desktop/phone controls and music preservation, and both simple-fade fallbacks.
+
+
+## Desktop cursor look
+
+A fine, hover-capable mouse rotates the camera by moving over the open canvas, without holding a button. Movement is damped, with gentler sensitivity than touch dragging. Entering/leaving the canvas resets the pointer baseline; UI, modals, cinematics and the frozen ending retain their input locks. Hovering a photo or book holds the view steady for clicking. Touch devices retain their existing drag-to-look gesture, independent joystick and camera-relative movement.
+
+`node checks/desktop-mouse-look.mjs` checks real no-button mouse movement, a stable character heading, no continuous turn after the cursor stops, camera-relative WASD, menu exclusion/input lock and photo hover/click. Run `mobile-interactions.mjs` for the touch regression check.
+
+
+## Quiet finale atmosphere
+
+The existing star layers retain their slow, low-contrast twinkle. Fireflies now stay within 0.4 world units of the garden's shared flower-bed anchors; petals drift in small closed paths near those same beds. The clear central staging area is untouched. Phone/tablet mode uses four fireflies and three petals; desktop uses six and four. A single point batch with a 32px soft texture and one instanced petal batch use two draw calls, shared materials, and no lights, shadows, physics, or post-processing. Animation only updates the small GPU buffers, with no React state changes. Reduced motion and battery saver omit the garden effects; their existing static star fallback remains.
+
+`node checks/finale-atmosphere.mjs` checks bounded particle paths and counts, actual draw-call/triangle cost, unchanged complete actor and camera transforms, phone portrait/landscape and desktop, dynamic reduced-motion preferences, resource disposal, and a three-second phone-viewport frame sample at 4x browser CPU throttling. This reports emulation timings rather than claiming physical phone GPU performance. Use `little-universe.mjs` for photo interactions, bouquet, navigation, collected memories, battery saver, and replay regression checks.

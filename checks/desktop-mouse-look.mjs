@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+let mobileControls = false;
+const tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();const ws=new WebSocket(tabs.find(p=>p.url==='http://127.0.0.1:5173/').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r));let id=0;const pending=new Map(),errors=[];ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);});const call=(method,params={})=>new Promise(r=>{const n=++id;pending.set(n,r);ws.send(JSON.stringify({id:n,method,params}));});const ev=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true});if(r.result.exceptionDetails)throw Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value;};const wait=ms=>new Promise(r=>setTimeout(r,ms));const click=selector=>ev(`document.querySelector(${JSON.stringify(selector)}).click()`);const setup=()=>ev(`(async()=>{const f=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('@react-three_fiber.js')).name);let root;for(let i=0;i<100&&!(root=f._roots.get(document.querySelector('canvas')));i++)await new Promise(r=>setTimeout(r,100));window.s=root.store.getState();window.T=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('/three.js')).name);window.actors=s.scene.children.filter(o=>o.type==='Group'&&o.children.some(c=>c.type==='Group'&&c.children.some(m=>m.geometry?.type==='LatheGeometry')));})()`);const key=(k,down)=>call('Input.dispatchKeyEvent',{type:down?'keyDown':'keyUp',key:k,code:'Key'+k.toUpperCase()});
+const boot=async mobile=>{
+mobileControls = mobile;
+await ev('document.fullscreenElement?document.exitFullscreen():null');await call('Emulation.setDeviceMetricsOverride',{width:mobile?390:1100,height:mobile?844:850,deviceScaleFactor:1,mobile});await call('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});await call('Page.reload');await wait(700);for(let i=0;i<60&&!await ev('!!document.querySelector(".intro-star")');i++)await wait(200);
+await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);await click('.intro-star');await wait(200);await click('.intro-enter');await wait(1700);await call('Emulation.setEmulatedMedia',{features:[]});await setup();await ev('window.originalCanvas=document.querySelector("canvas");window.visitMarker=12345');
+};
+const move=(x,y)=>call('Input.dispatchMouseEvent',{type:'mouseMoved',x,y,buttons:0});
+const heading=()=>ev('Math.atan2(s.camera.getWorldDirection(new T.Vector3()).x,s.camera.getWorldDirection(new T.Vector3()).z)');
+try{
+await call('Runtime.enable');await boot(false);
+assert.ok(await ev(`matchMedia('(any-hover: hover) and (any-pointer: fine)').matches`),'real mouse capability detected');
+const before=await heading(), bodyYaw=await ev('actors[0].rotation.y');
+await move(550,240);await move(580,245);await move(620,250);await wait(550);
+assert.ok(Math.abs(await heading()-before)>.12,'moving mouse without buttons looks around');assert.ok(Math.abs(await ev('actors[0].rotation.y')-bodyYaw)<.02,'mouse alone leaves character facing unchanged');
+const stopped=await heading();await wait(450);assert.ok(Math.abs(await heading()-stopped)<.01,'no continuous turn when mouse stops');
+await ev('window.start=actors[0].position.clone();window.forward=s.camera.getWorldDirection(new T.Vector3()).setY(0).normalize()');await key('w',true);await wait(550);await key('w',false);await wait(200);assert.ok(await ev('actors[0].position.clone().sub(start).normalize().dot(forward)')>.96,'WASD remains camera-relative');
+console.log('PASS no-button mouse look, smoothing, stable idle heading and camera-relative WASD');
+const menuPoint=await ev(`(()=>{const r=document.querySelector('button[aria-label=\"Open museum menu\"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);await move(menuPoint.x,menuPoint.y);await wait(200);const ui=await heading();await move(menuPoint.x+2,menuPoint.y+2);await wait(250);assert.ok(Math.abs(await heading()-ui)<.04,'menu hover does not orbit');
+await click('button[aria-label="Open museum menu"]');await wait(250);const locked=await heading();await move(600,300);await move(750,330);await wait(300);assert.ok(Math.abs(await heading()-locked)<.01,'menu locks mouse look');await click('button[aria-label="Close museum menu"]');
+// Reset through the real intro and test a photo under the cursor.
+await boot(false);await ev('actors[0].position.set(0,0,-5);actors[1].position.set(1.05,0,-5.3)');await wait(1100);
+const photo=await ev(`(()=>{const g=s.scene.getObjectsByProperty('type','Group').find(o=>o.userData.interactivePhoto&&Math.abs(o.position.x)<.01&&o.position.z<-6);const p=g.getWorldPosition(new T.Vector3()).project(s.camera);return{x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2}})()`);
+await move(photo.x,photo.y);await wait(120);const still=await heading();await move(photo.x+4,photo.y+3);await wait(300);assert.ok(Math.abs(await heading()-still)<.01,'photo hover keeps its target still');
+await call('Input.dispatchMouseEvent',{type:'mousePressed',x:photo.x+4,y:photo.y+3,button:'left',clickCount:1});await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:photo.x+4,y:photo.y+3,button:'left',clickCount:1});await wait(250);assert.ok(await ev('!!document.querySelector(".photo-modal")'),'real photo click still opens viewer');await click('button[aria-label="Close"]');
+console.log('PASS UI exclusion, modal lock and stable photo hover/click');
+assert.deepEqual(errors,[]);console.log('ALL DESKTOP MOUSE LOOK CHECKS PASSED');
+}finally{await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

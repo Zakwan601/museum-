@@ -38,8 +38,20 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
 
   useEffect(() => {
     const el = gl.domElement;
+    const mouseLook = window.matchMedia('(any-hover: hover) and (any-pointer: fine)');
+    let mousePosition: { x: number; y: number } | null = null;
+    const pointerPoint = new THREE.Vector2();
+    const overPhoto = (e: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
+      pointerPoint.set((e.clientX - rect.left) / rect.width * 2 - 1, -(e.clientY - rect.top) / rect.height * 2 + 1);
+      ray.far = Infinity; ray.setFromCamera(pointerPoint, camera);
+      const hit = ray.intersectObjects(scene.children, true).find(h => (h.object as THREE.Mesh).isMesh);
+      return Boolean(hit?.object.userData.interactivePhoto || hit?.object.parent?.userData.interactivePhoto);
+    };
     const down = (e: PointerEvent) => {
+      mousePosition = null;
       if (kiss.active || cameraState.inputLocked || dragPointerId.current !== null || e.button !== 0) return;
+      if (e.pointerType === 'mouse' && mouseLook.matches) { cameraState.azimuth = smoothAzimuth.current; cameraState.pitch = smoothPitch.current; }
       const rect = el.getBoundingClientRect();
       const point = new THREE.Vector2((e.clientX - rect.left) / rect.width * 2 - 1, -(e.clientY - rect.top) / rect.height * 2 + 1);
       ray.far = Infinity;
@@ -50,7 +62,21 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
       last.current = { x: e.clientX, y: e.clientY, distance: 0, interactive: Boolean(hit?.object.userData.interactivePhoto || hit?.object.parent?.userData.interactivePhoto) };
     };
     const move = (e: PointerEvent) => {
-      if (kiss.active || cameraState.inputLocked) { dragPointerId.current = null; return; }
+      if (kiss.active || cameraState.inputLocked) { dragPointerId.current = null; mousePosition = null; return; }
+      // A real mouse can look without being held. Touch keeps its drag gesture.
+      if (e.pointerType === 'mouse' && mouseLook.matches && e.buttons === 0) {
+        if (e.target !== el) { mousePosition = null; return; }
+        const previous = mousePosition;
+        mousePosition = { x: e.clientX, y: e.clientY };
+        if (!previous) return;
+        // Let memories remain still under the cursor so they are easy to click.
+        if (overPhoto(e)) { cameraState.azimuth = smoothAzimuth.current; cameraState.pitch = smoothPitch.current; return; }
+        const dx = THREE.MathUtils.clamp(e.clientX - previous.x, -80, 80);
+        const dy = THREE.MathUtils.clamp(e.clientY - previous.y, -80, 80);
+        cameraState.azimuth -= dx * CAMERA.rotationSensitivity * .5;
+        cameraState.pitch = THREE.MathUtils.clamp(cameraState.pitch + dy * CAMERA.pitchSensitivity * .5, CAMERA.minPitch, CAMERA.maxPitch);
+        return;
+      }
       if (dragPointerId.current !== e.pointerId) return;
       const dx = e.clientX - last.current.x, dy = e.clientY - last.current.y;
       last.current.x = e.clientX; last.current.y = e.clientY;
@@ -69,19 +95,22 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
       dragPointerId.current = null;
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
     };
+    const leave = () => { mousePosition = null; };
     const blur = () => {
+      mousePosition = null;
       const pointer = dragPointerId.current;
       dragPointerId.current = null;
       if (pointer !== null && el.hasPointerCapture(pointer)) el.releasePointerCapture(pointer);
     };
     el.addEventListener('pointerdown', down);
+    el.addEventListener('pointerleave', leave);
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
     window.addEventListener('blur', blur);
     window.addEventListener('resize', blur);
     window.addEventListener('orientationchange', blur);
     document.addEventListener('fullscreenchange', blur);
-    return () => { el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('blur', blur); window.removeEventListener('resize', blur); window.removeEventListener('orientationchange', blur); document.removeEventListener('fullscreenchange', blur); };
+    return () => { el.removeEventListener('pointerdown', down); el.removeEventListener('pointerleave', leave); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('blur', blur); window.removeEventListener('resize', blur); window.removeEventListener('orientationchange', blur); document.removeEventListener('fullscreenchange', blur); };
   }, [camera, cameraState, gl, kiss, ray, scene]);
 
   useFrame((_, frameDelta) => {
@@ -109,7 +138,10 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
       camera.position.lerpVectors(ending.cameraPosition, view.position, t);
       shot.position.copy(view.position); shot.lookAt(view.target);
       camera.quaternion.slerpQuaternions(ending.cameraRotation, shot.quaternion, t);
-      perspectiveCamera.fov = THREE.MathUtils.lerp(ending.cameraFov, view.fov, t); perspectiveCamera.updateProjectionMatrix();
+      perspectiveCamera.fov = THREE.MathUtils.lerp(ending.cameraFov, view.fov, t);
+      // Shift the composition down without tilting farther towards the ground.
+      // Blend the lens shift with the existing single cinematic pullback.
+      perspectiveCamera.setViewOffset(perspectiveCamera.aspect * 1000, 1000, 0, view.shiftY * 1000 * t, perspectiveCamera.aspect * 1000, 1000);
       finalAspect.current = perspectiveCamera.aspect;
       if (t === 1 && ending.phase !== 'complete') { ending.phase = 'complete'; onEndingChange('complete'); }
       return;
