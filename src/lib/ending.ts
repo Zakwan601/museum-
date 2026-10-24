@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { PhotoConfig } from '../config';
-export type EndingPhase = 'exploring' | 'arrival' | 'bouquet' | 'pullback' | 'complete';
+export type EndingPhase = 'exploring' | 'arrival' | 'bouquet' | 'cake' | 'pullback' | 'complete';
 export interface EndingState {
   phase: EndingPhase;
   startedAt: number;

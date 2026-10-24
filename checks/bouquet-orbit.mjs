@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+let mobileControls = false;
+const tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();const ws=new WebSocket(tabs.find(p=>p.url==='http://127.0.0.1:5173/').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r));let id=0;const pending=new Map(),errors=[];ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);});const call=(method,params={})=>new Promise(r=>{const n=++id;pending.set(n,r);ws.send(JSON.stringify({id:n,method,params}));});const ev=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true});if(r.result.exceptionDetails)throw Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value;};const wait=ms=>new Promise(r=>setTimeout(r,ms));const click=selector=>ev(`document.querySelector(${JSON.stringify(selector)}).click()`);const setup=()=>ev(`(async()=>{const f=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('@react-three_fiber.js')).name);let root;for(let i=0;i<100&&!(root=f._roots.get(document.querySelector('canvas')));i++)await new Promise(r=>setTimeout(r,100));window.s=root.store.getState();window.T=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('/three.js')).name);window.actors=s.scene.children.filter(o=>o.type==='Group'&&o.children.some(c=>c.type==='Group'&&c.children.some(m=>m.geometry?.type==='LatheGeometry')));})()`);const key=(k,down)=>call('Input.dispatchKeyEvent',{type:down?'keyDown':'keyUp',key:k,code:'Key'+k.toUpperCase()});
+const boot=async mobile=>{
+mobileControls = mobile;
+await ev('document.fullscreenElement?document.exitFullscreen():null');await call('Emulation.setDeviceMetricsOverride',{width:mobile?390:1100,height:mobile?844:850,deviceScaleFactor:1,mobile});await call('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});await call('Page.reload');await wait(700);for(let i=0;i<60&&!await ev('!!document.querySelector(".intro-star")');i++)await wait(200);
+await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);await click('.intro-star');await wait(200);await click('.intro-enter');await wait(1700);await call('Emulation.setEmulatedMedia',{features:[]});await setup();await ev('window.originalCanvas=document.querySelector("canvas");window.visitMarker=12345');
+};
+const until=async(expression,seconds=10)=>{for(let i=0;i<seconds*10;i++){if(await ev(expression))return;await wait(100);}throw Error('Timeout: '+expression);};
+const snapshot=()=>ev(`(()=>{s.scene.updateMatrixWorld(true);return {camera:s.camera.position.toArray(),quaternion:s.camera.quaternion.toArray(),fov:s.camera.fov,actors:actors.map(a=>{const all=[];a.traverse(o=>all.push([...o.position.toArray(),...o.quaternion.toArray(),...o.scale.toArray()]));return all;})}})()`);
+
+const pointerTap=async(selector,mobile)=>{const p=await ev(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);if(mobile){await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,...p}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}else{await call('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1});await call('Input.dispatchMouseEvent',{type:'mouseReleased',...p,button:'left',clickCount:1});}};
+const positions=()=>ev('actors.map(a=>a.position.toArray())');
+
+const props=()=>ev(`(async()=>{const f=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('@react-three_fiber.js')).name),stack=[f._roots.get(document.querySelector('canvas')).fiber.current];while(stack.length){const n=stack.pop();if(!n)continue;if(n.memoizedProps?.cake&&n.memoizedProps?.onEndingChange){window.sceneProps=n.memoizedProps;return true;}stack.push(n.child,n.sibling);}throw Error('Scene not found');})()`);
+const arrive=async()=>{for(const from of [0,1,2]){const x=from*22+7.8;await ev(`actors[0].position.set(${x},0,0);actors[1].position.set(${x-.35},0,-1.05)`);await wait(250);await key('d',true);await until('!!document.querySelector(".room-transition-overlay.is-active")');await key('d',false);await until('!document.querySelector(".room-transition-overlay.is-active")',8);}await until('!!document.querySelector(".cake-invitation")',25);};
+
+try{
+await call('Page.reload');await wait(600);await call('Runtime.enable');
+for(const mode of ['desktop','portrait','landscape','reduced']){
+ const mobile=mode!=='desktop';await boot(mobile);
+ if(mode==='narrow'){await call('Emulation.setDeviceMetricsOverride',{width:320,height:568,mobile:true,deviceScaleFactor:1});await wait(300);}
+ if(mode==='landscape'){await call('Emulation.setDeviceMetricsOverride',{width:844,height:390,mobile:true,deviceScaleFactor:1});await wait(300);}
+ if(mode==='reduced'){await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(200);}
+ for(const from of [0,1,2]){const x=from*22+7.8;await ev(`actors[0].position.set(${x},0,0);actors[1].position.set(${x-.35},0,-1.05)`);await wait(250);await key('d',true);await until('!!document.querySelector(".room-transition-overlay.is-active")');await key('d',false);await until('!document.querySelector(".room-transition-overlay.is-active")',8);}
+ await until('!!document.querySelector(".bouquet-caption")');await props();
+ await ev(`(()=>{window.orbitSamples=[];window.recordOrbit=true;window.grip=actor=>{s.scene.updateMatrixWorld(true);const b=s.scene.getObjectByName('anniversary-rose-bouquet').getWorldPosition(new T.Vector3());return ['left','right'].map(side=>actor.getObjectByName(side+'-arm').children.find(c=>Math.abs(c.position.y+.31)<.00001).getWorldPosition(new T.Vector3()).distanceTo(b));};const tick=()=>{if(!recordOrbit)return;const k=sceneProps.kiss;if(k.active&&k.mode==='bouquet'){
+ const delta=s.camera.position.clone().sub(k.center),angle=Math.atan2(delta.x,delta.z),t=k.elapsed;
+ let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+ for(const actor of actors)for(const x of [-.55,.55])for(const y of [0,1.95])for(const z of [-.5,.5]){const p=actor.position.clone().add(new T.Vector3(x,y,z)).project(s.camera);minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+ const focus=k.center.clone().setY(1).sub(s.camera.position).normalize();
+ orbitSamples.push({t,angle,radius:Math.hypot(delta.x,delta.z),cameraX:s.camera.position.x,height:s.camera.position.y,focusError:s.camera.getWorldDirection(new T.Vector3()).angleTo(focus),minX,maxX,minY,maxY});
+ }requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
+ await until('sceneProps.kiss.elapsed>=3.1');assert.ok((await ev('grip(actors[1])')).every(d=>d<.065),'boy retains original stem grip');
+ const offer=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('../bouquet-orbit-'+mode+'-offer.png',Buffer.from(offer.result.data,'base64'));
+ await until('sceneProps.kiss.elapsed>=6.1');assert.ok((await ev('grip(actors[0])')).every(d=>d<.065),'girl retains original receiving grip');
+ const received=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('../bouquet-orbit-'+mode+'-received.png',Buffer.from(received.result.data,'base64'));
+ await until('!document.querySelector(".bouquet-caption")',12);const samples=await ev('recordOrbit=false;orbitSamples.filter(p=>p.t>=1.1&&p.t<=9.4)');assert.ok(samples.length>80);const portrait=mode==='portrait'||mode==='narrow'||mode==='reduced';assert.ok(samples.every(p=>portrait?p.radius>3.89&&p.radius<4.1:p.radius>4.59),'responsive bouquet camera distance');
+ let rotation=0;for(let i=1;i<samples.length;i++)rotation+=((samples[i].angle-samples[i-1].angle+Math.PI*3)%(Math.PI*2))-Math.PI;
+ if(mode==='reduced')assert.ok(Math.abs(rotation)<.001,'no orbit under reduced motion');else{assert.ok(rotation>6.26&&rotation<6.30,'one actual complete circle '+rotation);const speed=samples.slice(1).map((p,i)=>Math.abs(((p.angle-samples[i].angle+Math.PI*3)%(Math.PI*2))-Math.PI)/(p.t-samples[i].t));assert.ok(Math.max(...speed)<1.2,'gentler orbit angular speed');assert.ok(Math.min(...samples.map(p=>p.cameraX))<56,'full orbit is not flattened by indoor walls');}
+ assert.ok(samples.every(p=>p.minX>-1&&p.maxX<1&&p.minY>-1&&p.maxY<1),'both full bodies and heads stay inside frustum: '+JSON.stringify(samples.reduce((a,p)=>({minX:Math.min(a.minX,p.minX),maxX:Math.max(a.maxX,p.maxX),minY:Math.min(a.minY,p.minY),maxY:Math.max(a.maxY,p.maxY)}),{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity})));
+ assert.ok(samples.every(p=>Math.abs(p.height-(portrait?2.25:2.45))<.001&&p.focusError<.0001),'constant slightly elevated angle and couple-focused framing');
+ const girl=(await positions())[0];await until('!!document.querySelector(".cake-invitation")',15);assert.deepEqual((await positions())[0],girl,'girl never auto moved during cake reveal');const after=await snapshot();await wait(500);const stopped=await snapshot();assert.ok(Math.hypot(...stopped.camera.map((v,i)=>v-after.camera[i]))<.03,'camera orbit stops after bouquet');
+ console.log('PASS '+mode+' '+(rotation*180/Math.PI).toFixed(3)+' degree orbit, full head/body framing, original grips and cake handoff');
+}
+assert.deepEqual(errors,[]);console.log('ALL BOUQUET ORBIT CHECKS PASSED');
+}finally{await ev('window.recordOrbit=false');await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

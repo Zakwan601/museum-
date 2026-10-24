@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import PhotoFrame from './PhotoFrame';
 import FloatingGardenIsland from './FloatingGardenIsland';
 import GardenAtmosphere from './GardenAtmosphere';
+import AnniversaryCake from './AnniversaryCake';
+import type { CakeState } from '../lib/cake';
 import TwilightSky from './TwilightSky';
 import type { PhotoConfig } from '../config';
 import { endingView, endingFrozen } from '../lib/ending';
@@ -21,7 +23,7 @@ function MemoryTitle({ title }: { title: string }) {
   useEffect(() => () => texture.dispose(), [texture]);
   return <mesh position={[0, -.98, .02]} raycast={noRaycast}><planeGeometry args={[1.9, .4]} /><meshBasicMaterial map={texture} transparent depthWrite={false} /></mesh>;
 }
-export default function LittleUniverse({ ending, memories, compact, reducedMotion, simple, onPhotoClick }: { ending: EndingState; memories: PhotoConfig[]; compact: boolean; reducedMotion: boolean; simple: boolean; onPhotoClick: (photo: PhotoConfig) => void }) {
+export default function LittleUniverse({ ending, cake, memories, compact, reducedMotion, simple, onPhotoClick }: { ending: EndingState; cake: CakeState; memories: PhotoConfig[]; compact: boolean; reducedMotion: boolean; simple: boolean; onPhotoClick: (photo: PhotoConfig) => void }) {
   const { scene, size } = useThree();
   const world = useRef<THREE.Group>(null), cards = useRef<THREE.Group>(null);
   const formedAt = useRef(performance.now());
@@ -70,6 +72,7 @@ export default function LittleUniverse({ ending, memories, compact, reducedMotio
     <group ref={world} name="floating-island">
       <FloatingGardenIsland />
     </group>
+    <AnniversaryCake cake={cake} />
     {!simple && !reducedMotion && <GardenAtmosphere compact={compact} />}
     <group ref={cards} name="memory-constellation" visible={false}>
       {placements.map(({ photo, original, position, scale }) => <group key={original.id} name={`memory-${original.id}`} position={position} quaternion={composition.camera.quaternion} scale={scale}>

@@ -139,3 +139,12 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 
 .ending-theme .immersive-exit { top: auto; bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px)); }
 @media (max-width: 599px) and (max-height: 620px) and (orientation: portrait) { .ending-message { top: max(8px, env(safe-area-inset-top)); max-height: 36dvh; } .ending-message h1 { font-size: 16px; } .ending-message > p:not(.ending-eyebrow) { font-size: 10px; line-height: 1.4; margin-bottom: 8px; } .ending-message > button { min-height: 44px; padding: 8px 18px; } }
+
+/* Cake stage: the same HUD controls, clear of joystick and safe-area edges. */
+.cake-invitation { position: absolute; top: max(84px, calc(env(safe-area-inset-top) + 74px)); left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 36px)); margin: 0; padding: 12px 18px; border: 1px solid #f0d1a838; border-radius: 18px; background: #251c2dc9; color: #ffe8ce; font-size: 13px; line-height: 1.7; text-align: center; pointer-events: none; }
+.cake-interaction { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(260px, calc(100vw - 32px)); height: 52px; pointer-events: auto; text-align: center; }
+.cake-wish-button { width: 100%; min-height: 52px; height: 52px; padding: 12px 16px; border-color: #e9c78e70; background: #4a3548e8; color: #ffeac3; font-size: 13px; line-height: 1.5; touch-action: manipulation; }
+.cake-wish-button:focus-visible { outline: 2px solid #ffe4a9; outline-offset: 3px; }
+.cake-interaction p { margin: 8px 0 0; padding: 8px 10px; border-radius: 12px; background: #251c2dd9; color: #f4dfcc; font-size: 11px; line-height: 1.6; }
+.cake-memories summary { padding: 12px 0; color: #f9dfe5; font-size: 13px; cursor: pointer; }
+@media (max-height: 500px) and (orientation: landscape) { .ending-theme .museum-location { display: none; } .cake-invitation { top: max(14px, env(safe-area-inset-top)); width: min(330px, calc(100% - 300px)); padding: 8px 14px; font-size: 11px; } .cake-wish-button { min-height: 48px; } }

@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const { resumeExistingEnding } = await import(pathToFileURL(resolve('checks/legacy-ending.mjs')).href);
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 let mobileControls = false;
@@ -41,6 +44,6 @@ await record();await wait(2700);await click('button[aria-label="Return to walkin
 await boot(true);
 for(const from of [0,1,2]){const x=from*22+7.8;await ev(`actors[0].position.set(${x},0,0);actors[1].position.set(${x-.35},0,-1.05)`);await wait(250);await key('d',true);await until('!!document.querySelector(".room-transition-overlay.is-active")');await key('d',false);await until('!document.querySelector(".room-transition-overlay.is-active")',8);}
 await until('!!document.querySelector(".bouquet-caption")');await record();await wait(10600);const gift=await stop();assert.ok(gift.minGap>.93);assert.ok(gift.minTurningGap>1.17);console.log('PASS automatic bouquet approach and return',gift);
-await until('!!document.querySelector(".ending-message")',10);const frozen=await snapshot();await wait(500);assert.deepEqual(await snapshot(),frozen);assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'));
+await resumeExistingEnding(ev);await until('!!document.querySelector(".ending-message")',10);const frozen=await snapshot();await wait(500);assert.deepEqual(await snapshot(),frozen);assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'));
 assert.deepEqual(errors,[]);console.log('ALL MOMENT PATH CHECKS PASSED');
 }finally{await ev('window.recordPair=false');await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

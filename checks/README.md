@@ -1,3 +1,13 @@
+## Cake feature, stage one (current final-room flow)
+
+The existing bouquet and reaction complete first. The spacious floating garden, with roughly four times its earlier ground area, contains a dark, unlit-candle cake/pedestal from arrival. Its local shadow fades as a 2.4-second golden pool and short-range, shadow-free point light reveal it. Only after that reveal does the existing NPC velocity/step animation walk the boy to a fixed cake-side position. He faces the girl and waits. The existing joystick/WASD and drag camera unlock for the girl's approach, with island-edge, cake, and NPC collision checks. The cake is over five world units from arrival, so a player-driven walk is required. A nearby wish button centered on the screen only acknowledges a placeholder; it starts no ceremony, candles, kiss, constellation, or final-message transition.
+
+Collected memories remain in the existing state and photo viewer, accessible through the settings menu. That menu also reuses the existing replay action. Replay resets the cake state alongside bouquet, controls, NPC, memories and room state, without reloading the page. Reduced motion and battery saver keep the essential walk and gradual light reveal, without adding particles or shadows.
+
+`node checks/cake-invitation.mjs` covers desktop and phone portrait/landscape: dark cake before handoff, unchanged bouquet grips, gradual reveal, girl never automatically moved, the NPC walk/stop/invitation, actual joystick/WASD, actual mouse/touch wish activation, original photo captions/music, and replay. `node checks/cake-safety.mjs` covers walking collisions, exterior camera bounds, a capped-DPR/CPU-throttled browser sample, and replaying the scene under battery saver/reduced motion. Browser timings are not physical-phone benchmarks.
+
+The existing anniversary message and finale components are preserved for a later ceremony stage, as requested. `legacy-ending.mjs` is a test-only continuation into that pre-existing finale so the older ending, grip, atmosphere, memory-card, and replay regression checks can still exercise it; production exposes no later-stage trigger.
+
 ﻿# Mobile verification
 
 Run the Vite dev server (`npm run dev -- --host 127.0.0.1`) and a separate Chrome profile with remote debugging on localhost port 9222, opened at http://127.0.0.1:5173/. These checks use Chrome's DevTools protocol and Node 22's built-in WebSocket; no test dependencies are required. Run the scripts sequentially because they control the same test tab.
@@ -102,3 +112,10 @@ The existing star layers retain their slow, low-contrast twinkle. Fireflies now 
 Kiss, photo, and bouquet scenes share a coordinated path: first establish clearance, turn and travel around their shared center, then approach the existing interaction positions. The return retraces those arcs. Facing changes finish before the close approach, and the companion rejoins the original side of the walking formation along a short arc. Final pose spacing, hand-grip targets, bouquet transfer, cinematic timing, and frozen ending remain unchanged.
 
 `node checks/moment-paths.mjs` checks 576 starting/target-angle combinations, reversed starting sides in real desktop and mobile kiss/photo scenes, hand contact, return paths, rejoining from in front of the player, restored movement, automatic bouquet arrival, and the completely frozen ending. It samples actual character positions every animation frame to catch crossing paths between the final poses.
+
+
+## Bouquet camera orbit
+
+The existing bouquet camera makes one complete, eased 360-degree turn between 1.1 and 9.4 seconds of the unchanged handoff/reaction. A slightly elevated view (2.25 high on portrait phones, 2.45 otherwise, aimed at 1.0) and a responsive radius (3.9 on portrait phones, 4.6 on desktop/landscape, with a fit guard) keep both heads and full bodies framed. The orbit starts and finishes in the normal camera direction, avoiding extra entry/exit swings. Its 8.3-second turn is slower while the character animation duration stays unchanged. Outdoor bouquet shots bypass indoor wall bounds; other cinematics retain their original behavior. The existing entry/exit blend returns to the cake scene, and reduced motion uses a stationary camera view.
+
+`node checks/bouquet-orbit.mjs` samples actual camera positions through desktop, phone portrait, landscape, and reduced-motion sequences. It verifies the full turn, character framing and camera focus, unchanged hand grips, no girl auto-movement, and a stopped orbit after the handoff to the cake stage.

@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const { resumeExistingEnding } = await import(pathToFileURL(resolve('checks/legacy-ending.mjs')).href);
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 let mobileControls = false;
@@ -15,7 +18,7 @@ for(const from of [0,1,2]) {
  const x=from*22+7.8;await ev(`actors[0].position.set(${x},0,0);actors[1].position.set(${x-.35},0,-1.05)`);await wait(250);
  await key('d',true);await until('!!document.querySelector(".room-transition-overlay.is-active")');await key('d',false);await until('!document.querySelector(".room-transition-overlay.is-active")',8);
 }
-await until('!!document.querySelector(".ending-message")',22);
+await resumeExistingEnding(ev);await until('!!document.querySelector(".ending-message")',22);
 const particles=()=>ev(`(()=>{
  const f=s.scene.getObjectByName('universe-fireflies'),p=s.scene.getObjectByName('universe-drifting-petals');
  return {flies:f?Array.from(f.geometry.attributes.position.array):[],colors:f?Array.from(f.geometry.attributes.color.array):[],petals:p?Array.from(p.instanceMatrix.array):[],petalCount:p?.count||0,stars:s.scene.getObjectByName('universe-stars').children.map(o=>o.material.opacity)};

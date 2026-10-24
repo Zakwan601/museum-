@@ -1,3 +1,4 @@
+import { createCakeState, cakeControlsReady, cakeUi } from './lib/cake';
 import { createEnding, memoryKey } from './lib/ending';
 import type { EndingPhase } from './lib/ending';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,10 +32,15 @@ export default function App() {
   const kiss = useMemo(createKissState, []);
   const transition = useMemo(createRoomTransition, []);
   const ending = useMemo(createEnding, []);
+  const cake = useMemo(createCakeState, []);
+  const [cakeState, setCakeState] = useState(() => cakeUi(cake));
+  const onCakeChange = useCallback(() => setCakeState(cakeUi(cake)), [cake]);
   const [endingPhase, setEndingPhase] = useState<EndingPhase>('exploring');
   const [memories, setMemories] = useState<PhotoConfig[]>([]);
   const [story, setStory] = useState(0);
   const inEnding = endingPhase !== 'exploring';
+  const exploringCake = endingPhase === 'cake' && cakeState.phase === 'inviting';
+  const endingLocked = inEnding && !exploringCake;
   const onEndingChange = (phase: EndingPhase) => { ending.phase = phase; setEndingPhase(phase); };
   const [isTransitioning, setIsTransitioning] = useState(false);
   const viewport = useExperienceSettings();
@@ -54,13 +60,13 @@ export default function App() {
   useKeyboardControls(controls);
 
   useEffect(() => {
-    controls.paused = !entered || Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || inEnding;
+    controls.paused = !entered || Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || endingLocked;
     cameraState.inputLocked = controls.paused;
     if (controls.paused) {
       controls.keyboardX = controls.keyboardY = controls.joystickX = controls.joystickY = 0;
     }
     return () => { controls.paused = false; cameraState.inputLocked = false; };
-  }, [entered, selectedPhoto, menuOpen, isKissing, isTransitioning, inEnding, controls, cameraState]);
+  }, [entered, selectedPhoto, menuOpen, isKissing, isTransitioning, endingLocked, controls, cameraState]);
   useEffect(() => {
     if (!showHint) return;
     const timer = window.setTimeout(() => setShowHint(false), 5000);
@@ -103,10 +109,10 @@ export default function App() {
     setEntered(false); setSelectedPhoto(null); setNearbyPhoto(null); setMemories([]);
     setMenuOpen(false); setShowHint(false); setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); setIsTransitioning(false);
     Object.assign(controls, createControlState()); Object.assign(cameraState, createCameraState());
-    Object.assign(kiss, createKissState()); Object.assign(transition, createRoomTransition()); Object.assign(ending, createEnding());
+    Object.assign(kiss, createKissState()); Object.assign(transition, createRoomTransition()); Object.assign(ending, createEnding()); Object.assign(cake, createCakeState()); setCakeState(cakeUi(cake));
     setEndingPhase('exploring'); setCurrentRoom(MUSEUM_ROOMS[0]); setStory(value => value + 1);
   };
-  const blocked = Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || inEnding;
+  const blocked = Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || endingLocked;
   return (
     <div ref={museumElement} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
       {!entered ? <Intro onEnter={finishIntro} onEnterRequest={() => { if (settings.compact) void immersive.enter(); }} reducedMotion={settings.reducedMotion} /> : <>
@@ -118,16 +124,16 @@ export default function App() {
         dpr={[1, batterySaver ? 1 : settings.dpr]}
       >
         <fog attach="fog" args={['#382234', 16, 32]} />
-        <Scene ending={ending} memories={memories} onEndingChange={onEndingChange} transition={transition} simpleTransitions={batterySaver} onPortalEnter={enterPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={openPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
+        <Scene ending={ending} cake={cake} onCakeChange={onCakeChange} memories={memories} onEndingChange={onEndingChange} transition={transition} simpleTransitions={batterySaver} onPortalEnter={enterPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={openPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
       </Canvas>
       <div className="museum-hud">
-        <div className={`museum-top-left ${inEnding ? 'ending-hidden' : ''}`}>
+        <div className={`museum-top-left ${inEnding && !exploringCake ? 'ending-hidden' : ''}`}>
           <button type="button" className="hud-button" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close museum menu' : 'Open museum menu'} aria-expanded={menuOpen} aria-controls="museum-menu" disabled={isKissing || isTransitioning}>
             {menuOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
           <span className="museum-location" role="status"><span className="room-progress">{currentRoom.index + 1} / {MUSEUM_ROOMS.length}</span><span>{currentRoom.name}</span></span>
         </div>
-        <div className={`museum-music ${inEnding ? 'ending-music' : ''}`}><MusicPlayer key={story} softened={endingPhase === 'pullback' || endingPhase === 'complete'} /></div>
+        <div className={`museum-music ${inEnding ? 'ending-music' : ''}`}><MusicPlayer key={story} softened={endingPhase === 'cake' || endingPhase === 'pullback' || endingPhase === 'complete'} /></div>
         {menuOpen && <section id="museum-menu" className="museum-menu" aria-label="Museum settings">
           <h1 className="text-lg text-rose-100">A little world of us</h1>
           <p className="mt-1 text-xs leading-relaxed text-rose-100/60">Explore our memories, side by side.</p>
@@ -136,10 +142,14 @@ export default function App() {
           <label className="menu-setting"><span>Battery saver</span><input type="checkbox" checked={batterySaver} onChange={e => setBatterySaver(e.target.checked)} /></label>
           <label className="menu-setting"><span>Reduce motion</span><input type="checkbox" checked={settings.reducedMotion} disabled={viewport.reducedMotion} onChange={e => setLessMotion(e.target.checked)} /></label>
           <button type="button" className="menu-setting w-full" onClick={() => { setMenuOpen(false); setShowHint(true); }}>How to explore <span aria-hidden="true">?</span></button>
-          <p className="mt-2 text-xs text-rose-100/50">Use the heart to kiss, or the camera to pose together.</p>
+          {!inEnding && <p className="mt-2 text-xs text-rose-100/50">Use the heart to kiss, or the camera to pose together.</p>}
+          {exploringCake && <>
+            {memories.length > 0 && <details className="cake-memories"><summary>Collected memories ({memories.length})</summary>{memories.map(photo => <button type="button" className="menu-setting w-full" key={photo.id} onClick={() => { setMenuOpen(false); openPhoto(photo); }}>View {photo.title}</button>)}</details>}
+            <button type="button" className="menu-setting w-full" onClick={replayStory}>{'Replay Our Story \u2728'}</button>
+          </>}
         </section>}
         {showHint && !blocked && <div className="explore-hint" role="status">
-          <span>{settings.compact ? 'Joystick to walk. Drag the room to look.' : 'WASD to walk. Move the mouse to look.'}</span>
+          <span>{settings.compact ? 'Joystick to walk. Drag the room to look.' : 'WASD to walk. Hold and drag to look.'}</span>
           <button type="button" aria-label="Dismiss instructions" onClick={() => setShowHint(false)}><X size={16} /></button>
         </div>}
         {nearbyPhoto && !blocked && <button type="button" className={`photo-prompt ${isBook(nearbyPhoto) ? '' : 'vintage-photo-prompt'}`} onClick={() => openPhoto(nearbyPhoto)} aria-label={`View ${isBook(nearbyPhoto) ? 'book' : 'photo'}: ${nearbyPhoto.title}`}>
@@ -153,6 +163,13 @@ export default function App() {
         </div>}
         {isKissing && !isPosing && <div className="cinema-bars" aria-hidden="true" />}
         {isGivingBouquet && <p className="bouquet-caption" role="status">For all our tomorrows.</p>}
+        {exploringCake && !selectedPhoto && !menuOpen && <>
+          {!cakeState.nearby && !showHint && <p className="cake-invitation" role="status">Come here, I have one more little surprise for you. &#9825;</p>}
+          {cakeState.nearby && <div className="cake-interaction">
+            <button type="button" className="hud-button cake-wish-button" aria-label="Make a Little Wish" aria-describedby={cakeState.acknowledged ? 'cake-placeholder' : undefined} onClick={() => { if (cakeControlsReady(cake) && cake.nearby && !cake.acknowledged) { cake.acknowledged = true; onCakeChange(); } }}>Make a Little Wish &#10024;</button>
+            {cakeState.acknowledged && <p id="cake-placeholder" role="status">The wish ceremony is coming in the next chapter.</p>}
+          </div>}
+        </>}
         <div className={`museum-joystick ${blocked ? 'invisible' : ''}`}><VirtualJoystick controls={controls} disabled={blocked} /></div>
       </div>
       <div ref={node => { transition.overlay = node; }} className={`room-transition-overlay ${isTransitioning ? 'is-active' : ''}`} aria-hidden={!isTransitioning}>

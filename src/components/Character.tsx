@@ -1,3 +1,6 @@
+import { CAKE, constrainCakePosition } from '../lib/cake';
+import type { CakeState } from '../lib/cake';
+import { constrainGardenPosition } from '../lib/gardenLayout';
 import { endingFrozen } from '../lib/ending';
 import type { EndingState } from '../lib/ending';
 import { useEffect, useRef } from 'react';
@@ -13,8 +16,8 @@ import { createMomentPath, planMomentPath, sampleMomentPosition, momentFacing } 
 import type { KissState } from '../lib/kiss';
 import { constrainMuseumPosition, museumRoomAt, PASSAGE, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { ending: EndingState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
-export default function Character({ ending, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
+interface Props { ending: EndingState; cake: CakeState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
+export default function Character({ ending, cake, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
   const group = useRef<THREE.Group>(null), companion = useRef<THREE.Group>(null);
   const velocity = useRef(new THREE.Vector3()), follow = useRef(new THREE.Vector3());
   const motion = useRef(0), companionMotion = useRef(0), heading = useRef(0);
@@ -127,7 +130,9 @@ export default function Character({ ending, transition, controls, cameraState, c
     const requestedX = group.current.position.x, requestedZ = group.current.position.z;
     const margin = CHARACTER.radius + .4;
     const chamber = museumRoomAt(startX);
+    const atCake = ending.phase === 'cake';
     const clamp = (p: THREE.Vector3) => {
+      if (atCake) { constrainCakePosition(p); constrainGardenPosition(p); return; }
       constrainMuseumPosition(p);
       for (const [x, , z] of FLOWER_POSITIONS) {
         const dx = p.x - x, dz = p.z - z, distance = Math.hypot(dx, dz), radius = CHARACTER.radius + .34;
@@ -146,6 +151,20 @@ export default function Character({ ending, transition, controls, cameraState, c
       }
     };
     clamp(group.current.position);
+    if (atCake) {
+      // Resolve the two nearby solid objects together. At a tight contact,
+      // reject only this input step rather than pushing her through the NPC.
+      for (let pass = 0; pass < 5; pass++) {
+        const dx = group.current.position.x - companion.current.position.x, dz = group.current.position.z - companion.current.position.z;
+        const gap = Math.hypot(dx, dz);
+        if (gap < 1.04 && gap > .0001) {
+          group.current.position.x = companion.current.position.x + dx / gap * 1.04;
+          group.current.position.z = companion.current.position.z + dz / gap * 1.04;
+        }
+        clamp(group.current.position);
+      }
+      if (group.current.position.distanceTo(companion.current.position) < 1.035 || group.current.position.distanceTo(CAKE.position) < CAKE.collisionRadius - .001) group.current.position.set(startX, 0, startZ);
+    }
     // Remove velocity into walls while allowing motion along them.
     if ((requestedX - group.current.position.x) * velocity.current.x > .00001) velocity.current.x = 0;
     if ((requestedZ - group.current.position.z) * velocity.current.z > .00001) velocity.current.z = 0;
@@ -168,6 +187,24 @@ export default function Character({ ending, transition, controls, cameraState, c
       const aligned = Math.abs(companion.current.position.z) < PASSAGE.width / 2 - 1;
       follow.current.set(partnerRoom.centerX + direction * (aligned ? ROOM.width / 2 + PASSAGE.length : ROOM.width / 2 - 1.2), 0, 0);
     }
+    if (atCake) {
+      rejoiningFormation.current = false;
+      follow.current.copy(CAKE.npcPosition);
+      if (cake.phase !== 'walking') follow.current.copy(companion.current.position);
+      else {
+        // Steer around the girl if she walks into his short invitation route.
+        const dx = companion.current.position.x - charPos.x, dz = companion.current.position.z - charPos.z;
+        const tx = follow.current.x - charPos.x, tz = follow.current.z - charPos.z;
+        const vx = tx - dx, vz = tz - dz, lengthSq = vx * vx + vz * vz;
+        const along = lengthSq > .0001 ? THREE.MathUtils.clamp(-(dx * vx + dz * vz) / lengthSq, 0, 1) : 0;
+        if (along > 0 && Math.hypot(dx + along * vx, dz + along * vz) < 1.08) {
+          const current = Math.atan2(dx, dz), target = Math.atan2(tx, tz);
+          const next = current + Math.sign(angle(target, current) || 1) * .38;
+          const radius = Math.max(1.14, Math.hypot(dx, dz));
+          follow.current.set(charPos.x + Math.sin(next) * radius, 0, charPos.z + Math.cos(next) * radius);
+        }
+      }
+    }
     if (rejoiningFormation.current) {
       if (companion.current.position.distanceTo(follow.current) < .04) rejoiningFormation.current = false;
       else {
@@ -185,17 +222,22 @@ export default function Character({ ending, transition, controls, cameraState, c
     const oldX = companion.current.position.x, oldZ = companion.current.position.z;
     follow.current.sub(companion.current.position);
     const distance = follow.current.length();
-    const followSpeed = distance < .035 ? 0 : Math.min(CHARACTER.speed * 1.35, distance * 4);
+    const followSpeed = distance < .035 ? 0 : Math.min(atCake ? 1.15 : CHARACTER.speed * 1.35, distance * 4);
     follow.current.multiplyScalar(distance > 0 ? followSpeed / distance : 0);
     companionVelocity.current.lerp(follow.current, 1 - Math.exp(-10 * delta));
+    if (atCake && cake.phase === 'inviting') companionVelocity.current.set(0, 0, 0);
     companion.current.position.addScaledVector(companionVelocity.current, delta);
     clamp(companion.current.position);
     companionMotion.current = Math.hypot(companion.current.position.x - oldX, companion.current.position.z - oldZ) / Math.max(delta, .001);
     const companionHeading = companionMotion.current > .12
       ? Math.atan2(companion.current.position.x - oldX, companion.current.position.z - oldZ)
-      : group.current.rotation.y;
+      : atCake ? Math.atan2(charPos.x - companion.current.position.x, charPos.z - companion.current.position.z) : group.current.rotation.y;
     companion.current.rotation.y += angle(companionHeading, companion.current.rotation.y) * (1 - Math.exp(-9 * delta));
     companionPos.copy(companion.current.position);
+    if (atCake && cake.phase === 'walking') {
+      const facing = Math.atan2(charPos.x - companionPos.x, charPos.z - companionPos.z);
+      cake.npcArrived = companionPos.distanceTo(CAKE.npcPosition) < .065 && companionMotion.current < .04 && Math.abs(angle(facing, companion.current.rotation.y)) < .08;
+    }
     if (kiss.bouquetReceived) {
       bouquet.current.position.set(0, .68, .37).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(group.current.position);
       bouquet.current.rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y); bouquet.current.visible = true;

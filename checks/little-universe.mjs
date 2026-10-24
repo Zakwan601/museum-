@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const { resumeExistingEnding } = await import(pathToFileURL(resolve('checks/legacy-ending.mjs')).href);
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 let mobileControls = false;
@@ -31,7 +34,7 @@ assert.ok(await ev('!!s.scene.getObjectByName("our-little-universe")'));
 assert.equal(await ev('!!s.scene.getObjectByName("room-outro")'),false,'no enclosed fourth room');
 assert.equal(await ev('s.scene.getObjectsByProperty("name","outro-end-1").length'),0);
 await until('!document.querySelector(".bouquet-caption")',20);
-const frozenAtBouquet=await snapshot();
+await resumeExistingEnding(ev);const frozenAtBouquet=await snapshot();
 await until('!!document.querySelector(".ending-message")',10);await wait(1700);
 const final=await snapshot();assert.deepEqual(final.actors,frozenAtBouquet.actors,'bodies completely frozen throughout pullback');
 await key('w',true);await wait(250);await key('w',false);
@@ -53,7 +56,7 @@ await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion
 if(mobile){
 await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await wait(250);await click('button[aria-label="Open museum menu"]');await ev('document.querySelector(".menu-setting input").click()');await click('button[aria-label="Close museum menu"]');
 for(const from of [0,1,2]){const x=from*22+7.8;await ev(`actors[0].position.set(${x},0,0);actors[1].position.set(${x-.35},0,-1.05)`);await wait(250);await key('d',true);await until('!!document.querySelector(".room-transition-overlay.is-active")');await key('d',false);await until('!document.querySelector(".room-transition-overlay.is-active")',8);}
-await until('!!document.querySelector(".ending-message")',20);
+await resumeExistingEnding(ev);await until('!!document.querySelector(".ending-message")',20);
 assert.equal(await ev('s.scene.getObjectByName("memory-constellation").children.length'),0,'replay clears actual collection');assert.equal(await ev('!!s.scene.getObjectByName("universe-fireflies")'),false,'battery saver omits animated fireflies');assert.ok(await ev('s.scene.getObjectByName("anniversary-rose-bouquet").visible'),'fresh bouquet scene replays');
 console.log('PASS empty collection after replay, repeated bouquet, battery saver and reduced-motion finale');
 }

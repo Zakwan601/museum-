@@ -1,4 +1,6 @@
 import LittleUniverse from './LittleUniverse';
+import { CAKE } from '../lib/cake';
+import type { CakeState } from '../lib/cake';
 import type { EndingState, EndingPhase } from '../lib/ending';
 import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -21,13 +23,15 @@ import MagicArchway from './MagicArchway';
 import { ROOM_PORTALS, ROOM_TRANSITION_DURATION } from '../lib/roomTransition';
 import type { RoomPortal, RoomTransitionState } from '../lib/roomTransition';
 import { ease } from '../lib/kiss';
-import { museumRoomAt } from '../lib/museumLayout';
+import { museumRoomAt, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { MuseumRoom } from '../lib/museumLayout';
 
 const EXHIBITS = [...PHOTOS, ...BOOKS];
 
 interface Props {
   ending: EndingState;
+  cake: CakeState;
+  onCakeChange: () => void;
   memories: PhotoConfig[];
   onEndingChange: (phase: EndingPhase) => void;
   transition: RoomTransitionState;
@@ -46,7 +50,7 @@ interface Props {
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ ending, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
+export default function Scene({ ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(1.05, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
@@ -87,15 +91,34 @@ export default function Scene({ ending, memories, onEndingChange, transition, si
     if (kiss.elapsed >= duration) {
       kiss.active = false;
       if (kiss.mode === 'bouquet' && futureWelcomePlayed.current) {
-        ending.phase = 'pullback'; ending.startedAt = performance.now(); ending.cameraCaptured = false;
-        onEndingChange('pullback');
+        // Keep the existing finale available for a later ceremony stage.
+        // Step one ends with a player-led approach to the cake.
+        cake.phase = 'revealing'; cake.elapsed = 0; cake.reveal = 0;
+        ending.startedAt = performance.now();
+        // Restore a clear three-quarter view before handing control back.
+        cameraState.azimuth = Math.atan2(charPos.x - CAKE.position.x, charPos.z - CAKE.position.z) - .35; cameraState.pitch = .35;
+        onCakeChange(); onEndingChange('cake');
       }
       onKissComplete();
     }
   }, -3);
 
+  useFrame((_, delta) => {
+    if (ending.phase !== 'cake') return;
+    if (cake.phase === 'revealing') {
+      cake.elapsed = Math.min(CAKE.revealSeconds, cake.elapsed + Math.min(delta, .05));
+      cake.reveal = ease(cake.elapsed / CAKE.revealSeconds);
+      if (cake.elapsed === CAKE.revealSeconds) { cake.phase = 'walking'; onCakeChange(); }
+    } else if (cake.phase === 'walking' && cake.npcArrived) {
+      cake.phase = 'inviting'; onCakeChange();
+    }
+    const nearby = cake.phase === 'inviting' && charPos.distanceTo(CAKE.position) < CAKE.interactionRange + (cake.nearby ? .18 : 0);
+    if (nearby !== cake.nearby) { cake.nearby = nearby; onCakeChange(); }
+  }, -2.5);
+
   useFrame(() => {
-    const room = museumRoomAt(charPos.x);
+    // The expanded exterior is independent of the indoor room coordinate grid.
+    const room = ending.phase === 'cake' ? MUSEUM_ROOMS[3] : museumRoomAt(charPos.x);
     if (room.id !== currentRoomId.current && Math.abs(charPos.x - room.centerX) < ROOM.width / 2 - .2) {
       currentRoomId.current = room.id;
       onRoomChange(room);
@@ -149,8 +172,8 @@ export default function Scene({ ending, memories, onEndingChange, transition, si
         <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}
       </group>
-      {activeRoomIndex === 3 && <LittleUniverse ending={ending} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
-      <Character ending={ending} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
+      <Character ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
       <CameraRig ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );

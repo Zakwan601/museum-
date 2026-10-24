@@ -1,12 +1,11 @@
 import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { gardenFlowerBeds as flowerBeds } from '../lib/gardenLayout';
+import { gardenFlowerBeds as flowerBeds, gardenOutline as outline } from '../lib/gardenLayout';
 
 const SEGMENTS = 48;
-const outline = (a: number) => 3.48 * (1 + .085 * Math.sin(3 * a + .6) + .045 * Math.cos(5 * a - .9) + .025 * Math.sin(2 * a));
 // Keep the existing character and bouquet staging area exactly at floor level.
 const heightAt = (x: number, z: number) => {
-  const edge = THREE.MathUtils.clamp((Math.hypot(x, z / .76) - 1.35) / 2.3, 0, 1);
+  const edge = THREE.MathUtils.clamp((Math.hypot(x, z / .76) - 6.0) / 1.6, 0, 1);
   return edge * (.065 + .055 * Math.sin(x * .9 + z * .7));
 };
 const noRaycast = () => {};

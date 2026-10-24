@@ -86,7 +86,8 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
 
   useFrame((_, frameDelta) => {
     const delta = Math.min(frameDelta, .05);
-    smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, 12, delta);
+    const turningSpeed = ending.phase === 'cake' && performance.now() - ending.startedAt < 2400 ? 2.8 : 12;
+    smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, turningSpeed, delta);
     smoothPitch.current = THREE.MathUtils.damp(smoothPitch.current, cameraState.pitch, 12, delta);
     cameraState.smoothedAzimuth = smoothAzimuth.current;
   }, -2);
@@ -117,12 +118,13 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
       if (t === 1 && ending.phase !== 'complete') { ending.phase = 'complete'; onEndingChange('complete'); }
       return;
     }
+    const exterior = ending.phase === 'cake' || (kiss.active && kiss.mode === 'bouquet');
     const dt = Math.min(frameDelta, .05), p = profile.current;
     if (lastRelocation.current !== transition.relocation) {
       lastRelocation.current = transition.relocation; anchor.current.copy(charPos);
       pairOffset.current.copy(companionPos).sub(charPos).multiplyScalar(.45);
     }
-    p.distance = THREE.MathUtils.damp(p.distance, settings.distance, 5, dt);
+    p.distance = THREE.MathUtils.damp(p.distance, ending.phase === 'cake' ? (settings.compact ? 6.2 : 6.8) : settings.distance, 5, dt);
     p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
     p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
     p.compact = THREE.MathUtils.damp(p.compact, settings.compact ? 1 : 0, 5, dt);
@@ -136,33 +138,35 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
     target.z += (pairOffset.current.z - cos * .35) * p.compact;
     const minX = MUSEUM_BOUNDS.minX + CAMERA.wallMargin, maxX = MUSEUM_BOUNDS.maxX - CAMERA.wallMargin;
     const minZ = MUSEUM_BOUNDS.minZ + CAMERA.wallMargin, maxZ = MUSEUM_BOUNDS.maxZ - CAMERA.wallMargin;
-    constrainMuseumPosition(target, .3);
+    if (!exterior) constrainMuseumPosition(target, .3);
     const pitch = THREE.MathUtils.clamp(smoothPitch.current + p.pitch, .15 + p.compact * .15, 1.35);
-    const horizontal = cameraWallDistance(target, sin, cos, p.distance * Math.cos(pitch));
-    const ceiling = CAMERA.maxY - target.y;
+    const horizontal = exterior ? p.distance * Math.cos(pitch) : cameraWallDistance(target, sin, cos, p.distance * Math.cos(pitch));
+    const ceiling = exterior ? Infinity : CAMERA.maxY - target.y;
     const height = Math.min(ceiling, Math.max(p.distance * Math.sin(pitch), p.compact * Math.sqrt(Math.max(0, p.distance ** 2 - horizontal ** 2))));
     offset.set(sin * horizontal, height, cos * horizontal);
     let available = offset.length();
     offset.normalize();
     ray.set(target, offset); ray.far = available + .3;
     intersections.current.length = 0;
-    ray.intersectObjects(obstacles.current, true, intersections.current);
+    if (!exterior) ray.intersectObjects(obstacles.current, true, intersections.current);
     if (intersections.current.length) available = Math.max(.2, Math.min(available, intersections.current[0].distance - .3));
     orbitDistance.current = available < orbitDistance.current ? available : THREE.MathUtils.damp(orbitDistance.current, available, 6, dt);
     desired.copy(target).addScaledVector(offset, orbitDistance.current);
     // Smooth elevation/orientation changes while enforcing room bounds immediately.
     smoothOffset.current.lerp(desired.sub(target), 1 - Math.exp(-14 * dt));
     camera.position.copy(target).add(smoothOffset.current);
-    camera.position.x = THREE.MathUtils.clamp(camera.position.x, minX, maxX);
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, minZ, maxZ);
-    camera.position.y = THREE.MathUtils.clamp(camera.position.y, CAMERA.minY, CAMERA.maxY);
+    if (!exterior) {
+      camera.position.x = THREE.MathUtils.clamp(camera.position.x, minX, maxX);
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z, minZ, maxZ);
+    }
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, CAMERA.minY, exterior ? 12 : CAMERA.maxY);
     // Check the interpolated position too: a smooth orbit must not cut through a vase.
     offset.copy(camera.position).sub(target);
     const actualDistance = offset.length();
     if (actualDistance > .001) {
       ray.set(target, offset.divideScalar(actualDistance)); ray.far = actualDistance + .3;
       intersections.current.length = 0;
-      ray.intersectObjects(obstacles.current, true, intersections.current);
+      if (!exterior) ray.intersectObjects(obstacles.current, true, intersections.current);
       if (intersections.current.length && intersections.current[0].distance < actualDistance + .3) camera.position.copy(target).addScaledVector(offset, Math.max(.2, intersections.current[0].distance - .3));
     }
     camera.lookAt(target);
@@ -172,17 +176,29 @@ export default function CameraRig({ ending, onEndingChange, transition, cameraSt
     if (kiss.active) {
       const t = kiss.elapsed;
       const gifting = kiss.mode === 'bouquet';
-      const blend = ease(t / 1.8) * (1 - ease((t - (gifting ? 8.4 : 6.2)) / 2));
-      const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion ? 0 : gifting ? -.18 + .36 * ease((t - 1.8) / 5.4) : kiss.mode === 'kiss' ? .22 * Math.sin(t * .55) : 0);
+      const blend = ease(t / (gifting ? 1.1 : 1.8)) * (1 - ease((t - (gifting ? 9.4 : 6.2)) / (gifting ? 1 : 2)));
+      // One continuous turn shares the normal view's starting/ending direction.
+      // Spend more of the existing bouquet timeline on the orbit, without
+      // additional entry/exit swings or changing the character animation.
+      const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion ? 0 : gifting ? Math.PI * 2 * ease((t - 1.1) / 8.3) : kiss.mode === 'kiss' ? .22 * Math.sin(t * .55) : 0);
       const aspect = perspective.aspect || 1;
-      const desiredDistance = Math.min(5.4, Math.max(gifting ? 3.6 - .5 * ease((t - 2) / 3.5) : kiss.mode === 'photo' ? 3.4 : 2.8, (gifting ? 1.7 : 2.2) / aspect));
+      // Portrait phones get a closer shot while retaining the fit guard for
+      // both oversized heads. Desktop and landscape keep their wider framing.
+      const portraitBouquet = gifting && settings.phone && settings.portrait;
+      const desiredDistance = gifting
+        ? Math.max(portraitBouquet ? 3.9 : 4.6, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
+        : Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
       shotDistance.current = THREE.MathUtils.damp(shotDistance.current, desiredDistance, 6, dt);
       const distance = shotDistance.current;
       const room = museumRoomAt(kiss.center.x);
-      shotTarget.copy(kiss.center); shotTarget.y = gifting ? 1.02 : 1.08;
-      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, gifting ? 1.65 : 1.85, kiss.center.z + Math.cos(orbit) * distance);
-      shot.position.x = THREE.MathUtils.clamp(shot.position.x, room.centerX - ROOM.width / 2 + CAMERA.wallMargin, room.centerX + ROOM.width / 2 - CAMERA.wallMargin);
-      shot.position.z = THREE.MathUtils.clamp(shot.position.z, minZ, maxZ);
+      shotTarget.copy(kiss.center); shotTarget.y = gifting ? 1.0 : 1.08;
+      shot.position.set(kiss.center.x + Math.sin(orbit) * distance, gifting ? (portraitBouquet ? 2.25 : 2.45) : 1.85, kiss.center.z + Math.cos(orbit) * distance);
+      // The bouquet happens on the open island; indoor walls must not flatten
+      // its circular camera path. Kiss/photo scenes retain their room bounds.
+      if (!gifting) {
+        shot.position.x = THREE.MathUtils.clamp(shot.position.x, room.centerX - ROOM.width / 2 + CAMERA.wallMargin, room.centerX + ROOM.width / 2 - CAMERA.wallMargin);
+        shot.position.z = THREE.MathUtils.clamp(shot.position.z, minZ, maxZ);
+      }
       shot.lookAt(shotTarget);
       camera.position.lerp(shot.position, blend);
       camera.quaternion.slerp(shot.quaternion, blend);
