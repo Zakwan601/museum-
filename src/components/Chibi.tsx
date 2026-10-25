@@ -45,7 +45,6 @@ function cloth(outline: number[][], depth = .008) {
   const shape = new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y)));
   return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: .004, bevelThickness: .003, bevelSegments: 2, steps: 1, curveSegments: 4 });
 }
-const collar = cloth([[.035, .935], [.105, .95], [.19, .89], [.115, .825], [.065, .875]]);
 // Soft, uncrossed front drapes, contoured to the bodice instead of flat X panels.
 const scarf = (() => {
   const path = new THREE.CatmullRomCurve3([[.12,.935,0],[.155,.90,0],[.13,.82,0],[.11,.73,0],[.11,.675,0]].map(p => new THREE.Vector3(...p as [number,number,number])));
@@ -73,7 +72,6 @@ const scarfBack = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
   [-.12,.932,.13],[-.16,.935,.02],[-.12,.936,-.10],[0,.938,-.155],[.12,.936,-.10],[.16,.935,.02],[.12,.932,.13],
 ].map(p=>new THREE.Vector3(...p as [number,number,number]))),32,.024,8,false);
 const placket = cloth([[-.012, .865], [.012, .865], [.012, .625], [-.012, .625]], .003);
-const pocket = cloth([[.08, .82], [.165, .82], [.165, .745], [.12, .725], [.08, .745]], .003);
 function strand(points: number[][], width: number) {
   const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p[0], p[1], p[2])));
   const g = new THREE.TubeGeometry(curve, 12, width, 7, false), positions = g.getAttribute('position');
@@ -297,9 +295,7 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
         {pebble('buckle', [0, .595, .19], [.034, .026, .009], materials.buckle)}
         {pebble('buckleOpening', [0, .595, .2], [.022, .015, .003], materials.belt)}
         <mesh geometry={placket} material={materials.seam} position={[0, 0, .202]} />
-        <mesh geometry={pocket} material={materials.outfit} position={[0, 0, .207]} />
         {[.79, .7].map(y => pebble(`button${y}`, [0, y, .216], [.009, .009, .005], materials.white, true))}
-        {[-1, 1].map(side => <mesh key={side} geometry={collar} material={materials.outfit} scale={[side, 1, 1]} position={[0, 0, .205]} />)}
       </>}
       {[-1, 1].map(side => <group key={side} name={side < 0 ? 'left-arm' : 'right-arm'} ref={side < 0 ? leftArm : rightArm} position={[side * .245, .86, 0]}>
         {pebble('sleeve', [side * .035, -.085, 0], [.095, .115, .1], materials.outfit, false, side === 1 ? <mesh name="right-sleeve-house-patch" geometry={housePatch} material={materials.house} /> : undefined)}

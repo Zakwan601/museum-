@@ -55,7 +55,11 @@ export default function App() {
   const [initialCamera] = useState(() => ({ position: [0, 4, 8] as [number, number, number], fov: viewport.fov, near: .08, far: 40 }));
   const [batterySaver, setBatterySaver] = useState(false);
   const [lessMotion, setLessMotion] = useState(false);
-  const settings = useMemo(() => ({ ...viewport, reducedMotion: viewport.reducedMotion || lessMotion }), [viewport, lessMotion]);
+  const settings = useMemo(() => ({
+    ...viewport,
+    distance: viewport.phone && !viewport.portrait && immersive.fullscreen ? 4.0 : viewport.distance,
+    reducedMotion: viewport.reducedMotion || lessMotion,
+  }), [viewport, lessMotion, immersive.fullscreen]);
   const [isKissing, setIsKissing] = useState(false);
   const [isGivingBouquet, setIsGivingBouquet] = useState(false);
   const [isPosing, setIsPosing] = useState(false);
@@ -133,7 +137,7 @@ export default function App() {
   const closeLetter = useCallback(() => setLetterOpen(false), []);
   const blocked = letterOpen || Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || endingLocked || sitting;
   return (
-    <div ref={museumElement} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
+    <div ref={museumElement} data-ending-complete={endingPhase === 'complete'} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
       {!entered ? <Intro onEnter={finishIntro} onEnterRequest={() => { if (settings.compact) void immersive.enter(); }} reducedMotion={settings.reducedMotion} /> : <>
 
       <Canvas

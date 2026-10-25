@@ -1,3 +1,4 @@
+import FootstepSparkles from './FootstepSparkles';
 import { COUCH, createSittingPose } from '../lib/couch';
 import type { CouchState } from '../lib/couch';
 import { CAKE, constrainCakePosition, cakeCeremonyActive } from '../lib/cake';
@@ -377,6 +378,7 @@ export default function Character({ suspended = false, couch, ending, cake, tran
     }
   }, -1);
   return <>
+    <FootstepSparkles position={charPos} motion={motion} enabled={!suspended && !reducedMotion && !controls.paused && !kiss.active && !endingFrozen(ending) && couch.phase === 'idle'} />
     <RoseBouquet pose={bouquet} />
     <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi suspended={suspended} sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
     <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi suspended={suspended} sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>

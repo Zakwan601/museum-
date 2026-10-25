@@ -128,7 +128,29 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 .ending-message button:focus-visible { outline: 2px solid #ffe4a9; outline-offset: 3px; }
 .ending-memory-access { font-size: 12px; }
 @keyframes ending-appear { from { opacity: 0; } to { opacity: 1; } }
-@media (orientation: landscape) and (max-height: 500px) { .ending-message { top: max(8px, env(safe-area-inset-top)); max-height: 32dvh; width: min(650px, calc(100% - 150px)); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 18px; } .ending-eyebrow { grid-column: 1 / -1; margin: 0; font-size: 9px; } .ending-message h1 { margin: 0; font-size: 17px; } .ending-message > p:not(.ending-eyebrow) { grid-column: 1; font-size: 10px; margin: 0; } .ending-message > button { grid-column: 2; grid-row: 2 / 4; } }
+/* Keep the final message in reading order and leave the couple's view clear. */
+@media (orientation: landscape) and (max-height: 500px), (orientation: landscape) and (max-height: 850px) and (pointer: coarse) {
+  .ending-message {
+    top: max(10px, env(safe-area-inset-top));
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px));
+    width: calc(100% - max(32px, env(safe-area-inset-left)) - max(32px, env(safe-area-inset-right)));
+    max-height: none; padding: 0; overflow: visible;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    pointer-events: none;
+  }
+  .ending-message h1 { margin: 0; font-size: clamp(15px, 4.4dvh, 22px); line-height: 1.25; }
+  .ending-message > p:not(.ending-eyebrow) { max-width: 560px; margin: 0; font-size: clamp(10px, 2.9dvh, 13px); line-height: 1.5; }
+  .ending-message > button {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    min-height: 44px; padding: 9px 20px; font-size: 12px; white-space: nowrap; pointer-events: auto;
+  }
+  .ending-memory-access { pointer-events: auto; }
+  .museum-app[data-ending-complete=true] .museum-music.ending-music { right: max(14px, env(safe-area-inset-right)); bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px)); }
+  .museum-app[data-ending-complete=true] .museum-music .hud-button,
+  .museum-app[data-ending-complete=true] .immersive-exit { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+  .museum-app[data-ending-complete=true] .music-label { display: none; }
+  .museum-app[data-ending-complete=true] .immersive-exit { top: auto; right: calc(max(14px, env(safe-area-inset-right)) + 54px); bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px)); }
+}
 @media (prefers-reduced-motion: reduce) { .ending-message { animation: none; } }
 
 .museum-music.ending-music { top: auto; bottom: var(--edge-bottom); }
