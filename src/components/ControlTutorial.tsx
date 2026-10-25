@@ -30,6 +30,6 @@ export default function ControlTutorial({ onClose, controls, cameraState }: { on
     return () => cancelAnimationFrame(frame);
   }, [controls, cameraState, onClose]);
   return <p className="control-tutorial" data-step={step ? 'look' : 'move'} data-touch={touch} role="status" aria-live="polite">
-    {step ? touch ? 'Swipe the scene to look around' : 'Hold left click and drag to look around' : touch ? 'Drag the joystick to walk' : 'Use W A S D to walk'}
+    {step ? touch ? 'Swipe the scene to look around' : 'Hold left click and drag to look around' : touch ? 'Drag the joystick to walk' : 'Use 𝕎, 𝔸, 𝕊, 𝔻 to walk'}
   </p>;
 }

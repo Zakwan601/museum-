@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Star } from 'lucide-react';
 
 const wishes = [
-  'Happy anniversary, my love.',
-  'Of all the stars, I’m glad I found you.',
-  'Here’s to our little memories,',
-  'and a lifetime of making more, together.',
+  'I love you.',
+  'so soo sooo soo much.',
+  'Here’s a little something for our little memories,',
+  'and a lifetime of making more  InShaAllah.',
 ];
 
 export default function Intro({ onEnter, onEnterRequest, reducedMotion }: { onEnter: () => void; onEnterRequest?: () => void; reducedMotion: boolean }) {
@@ -29,15 +29,15 @@ export default function Intro({ onEnter, onEnterRequest, reducedMotion }: { onEn
     <div className="intro-content">
       {!started ? <div className="intro-invitation">
         <button type="button" className="intro-star" onClick={() => setStarted(true)} aria-label="Tap the glowing star to begin"><Star size={76} strokeWidth={1} fill="currentColor" /></button>
-        <h1>Happy 7 year Anniversary<br />My sweetest baby girl</h1>
-        <p>Tap the star to begin</p>
+        <h1>Happy 7 year Anniversary Motuuuu <br />My sweetest baby girl</h1>
+        <h3>Tap the star to begin</h3>
       </div> : <section className="intro-wishes" aria-labelledby="intro-title">
         
-        <h1 id="intro-title" ref={title} tabIndex={-1}>For you, always.</h1>
+        <h1 id="intro-title" ref={title} tabIndex={-1}>Happy anniversary</h1>
         <div className="intro-lines">{wishes.map((line, i) => <p className="intro-line" key={line} style={{ animationDelay: reducedMotion ? '0s' : `${i * 1.4}s` }}>
           <span>{line}</span><span className="intro-line-sparkles" aria-hidden="true" style={{ animationDelay: reducedMotion ? '0s' : `${i * 1.4 + .5}s` }}>✧<b>✦</b>✧</span>
         </p>)}</div>
-        <div className="intro-enter-slot">{ready && <button type="button" className="intro-enter" disabled={leaving} onClick={() => { onEnterRequest?.(); setLeaving(true); }}>Enter Our Little World <ArrowRight size={18} aria-hidden="true" /></button>}</div>
+        <div className="intro-enter-slot">{ready && <button type="button" className="intro-enter" disabled={leaving} onClick={() => { onEnterRequest?.(); setLeaving(true); }}>Choloooooo ghure ashi, Jabe? </button>}</div>
       </section>}
     </div>
   </main>;
