@@ -6,7 +6,7 @@ import { createEnding, memoryKey } from './lib/ending';
 import type { EndingPhase } from './lib/ending';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Camera, Heart, Menu, X } from 'lucide-react';
+import { Camera, Heart, HeartHandshake, Menu, X } from 'lucide-react';
 import * as THREE from 'three';
 import Scene from './components/Scene';
 import VirtualJoystick from './components/VirtualJoystick';
@@ -88,7 +88,7 @@ export default function App() {
   }, []);
 
   const [momentHint, setMomentHint] = useState(false);
-  const startMoment = (mode: 'kiss' | 'photo' | 'bouquet') => {
+  const startMoment = (mode: 'kiss' | 'photo' | 'bouquet' | 'hug') => {
     if (couch.phase !== 'idle' || kiss.active || transition.active || letterOpen || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet' && !(mode === 'kiss' && cake.phase === 'aligning'))) return false;
     if (mode !== 'photo' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
     setMomentHint(false);
@@ -175,6 +175,7 @@ export default function App() {
         {!letterOpen && !selectedPhoto && !menuOpen && !isGivingBouquet && !isTransitioning && !inEnding && !sitting && <div className="museum-actions">
           {isPosing ? <button type="button" className="hud-button return-button" onClick={finishPhotoPose} disabled={poseReturning} aria-label="Return to walking">{poseReturning ? 'Returning…' : 'Back to walking'}</button> : <>
             <button type="button" className="hud-button" onClick={() => startMoment('photo')} disabled={isKissing} aria-label="Pose together for a photo" title="Pose together"><Camera size={21} /><span className="action-label">Futooo</span></button>
+            <button type="button" className="hud-button" onClick={() => startMoment('hug')} disabled={isKissing} aria-label="Share a hug" title="Hug"><HeartHandshake size={21} /><span className="action-label">Hug {'\u2661'}</span></button>
             <button type="button" className="hud-button" onClick={() => startMoment('kiss')} disabled={isKissing} aria-label="Share a kiss" title="Share a kiss"><Heart size={21} /><span className="action-label">{isKissing ? 'A moment for us…' : 'Kiss'}</span></button>
           </>}
         </div>}

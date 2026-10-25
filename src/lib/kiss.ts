@@ -7,7 +7,7 @@ export interface KissState {
   pairDistance: number;
   sequence: number;
   elapsed: number;
-  mode: 'kiss' | 'photo' | 'bouquet';
+  mode: 'kiss' | 'photo' | 'bouquet' | 'hug';
   bouquetReceived: boolean;
   returning: boolean;
   center: THREE.Vector3;

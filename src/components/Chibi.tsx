@@ -1,3 +1,5 @@
+import { hugLean } from '../lib/hug';
+import type { HugPose } from '../lib/hug';
 import CuteWatch from './CuteWatch';
 import type { SittingPose } from '../lib/couch';
 import { endingFrozen } from '../lib/ending';
@@ -98,11 +100,13 @@ const housePatch = (() => {
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();return g;
 })();
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { suspended?: boolean; sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ suspended = false, sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { hug?: MutableRefObject<HugPose>; suspended?: boolean; sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ hug, suspended = false, sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const contactTarget = useRef(new THREE.Vector3()), mouthOffset = useRef(new THREE.Vector3());
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
+  const chest = useRef<THREE.Group>(null), shirtMesh = useRef<THREE.Mesh>(null);
+  const lastHug = useRef(0);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
   const leftKnee = useRef<THREE.Group>(null), rightKnee = useRef<THREE.Group>(null);
   const skirt = useRef<THREE.Mesh>(null), contactShadow = useRef<THREE.Mesh>(null);
@@ -147,6 +151,15 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
     if (sitting?.current.holding && lastSit.current === 1) return;
     if (ending && endingFrozen(ending)) { if (eyes.current) eyes.current.scale.y = 1; return; }
     const dt = Math.min(delta, .05), time = clock.elapsedTime + (rose ? 1.3 : 0);
+    const hugging = hug?.current.amount ?? 0, previousHug = lastHug.current;
+    lastHug.current = hugging;
+    const lean = hugLean(hug?.current.gap ?? 1) * hugging;
+    if (chest.current) chest.current.rotation.x = lean;
+    if (shirtMesh.current) {
+      const base = rose ? 0 : .1;
+      shirtMesh.current.rotation.x = lean;
+      shirtMesh.current.position.set(0, .49 + base * Math.cos(lean), base * Math.sin(lean));
+    }
     const affection = kissPose?.current ?? 0;
     const posing = photoPose?.current ?? 0;
     blend.current = THREE.MathUtils.damp(blend.current, Math.min(motion.current / 2, 1), 9, dt);
@@ -164,14 +177,14 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
       else rightArm.current.rotation.z = THREE.MathUtils.lerp(rightArm.current.rotation.z, .68, posing);
       leftLeg.current.rotation.x = -swing; rightLeg.current.rotation.x = swing;
     }
-    if (root.current) { root.current.position.y = .012 + Math.sin(time * 2) * .008 + Math.abs(Math.sin(phase.current)) * .035 * blend.current; root.current.rotation.z = Math.sin(phase.current) * .018 * blend.current; }
+    if (root.current) { root.current.position.y = .012 + (Math.sin(time * 2) * .008 + Math.abs(Math.sin(phase.current)) * .035 * blend.current) * (1 - hugging); root.current.rotation.z = Math.sin(phase.current) * .018 * blend.current; }
     if (head.current) { head.current.rotation.z = Math.sin(time * 1.1) * .025 * (1 - affection) - affection * poseSide * .1; head.current.rotation.x = -.06 * affection; head.current.rotation.y = Math.sin(time * .65) * .045 * (1 - blend.current) * (1 - affection); }
     if (head.current) head.current.rotation.z += posing * poseSide * .08;
     if (reducedMotion) {
       if (root.current) { root.current.position.y = .012; root.current.rotation.z = 0; }
       if (head.current) { head.current.rotation.y = 0; head.current.rotation.z = -affection * poseSide * .1 + posing * poseSide * .08; }
     }
-    if (eyes.current) { const blink = time % 4.7; eyes.current.scale.y = (blink < .14 ? Math.max(.08, Math.abs(blink - .07) / .07) : 1) * (1 - affection * .9) * (1 - (wishEyes?.current ?? 0) * .96); }
+    if (eyes.current) { const blink = time % 4.7; eyes.current.scale.y = (blink < .14 ? Math.max(.08, Math.abs(blink - .07) / .07) : 1) * (1 - affection * .9) * (1 - hugging * .88) * (1 - (wishEyes?.current ?? 0) * .96); }
     if (mouth.current) { mouth.current.scale.set(1 - affection * .65, 1 + affection * .3, 1); mouth.current.position.z = .332 + affection * .045; }
     if (head.current) {
       head.current.position.set(0, 1.23, 0);
@@ -185,6 +198,10 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
         contactTarget.current.sub(mouthOffset.current);
         head.current.position.lerp(contactTarget.current, affection);
       }
+    }
+    if (hugging > 0 && head.current) {
+      head.current.position.set(.4 * hugging, .49 + .74 * Math.cos(lean), .74 * Math.sin(lean));
+      head.current.rotation.set(lean * .45, -.12 * hugging, -.08 * hugging);
     }
     if (affection > 0 && kissHands && root.current) {
       // Solve the actual hand endpoint after idle motion and height scaling.
@@ -235,24 +252,31 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
       if (head.current) { head.current.rotation.set(0, 0, 0); head.current.position.set(0, 1.23, 0); }
       if (eyes.current) eyes.current.scale.y = 1;
     }
-    if ((seated > 0 || previousSeat > 0) && root.current) {
+    if ((seated > 0 || previousSeat > 0 || hugging > 0 || previousHug > 0) && root.current) {
       const k = seatScratch;
       root.current.updateWorldMatrix(true, false);
-      const armAmount = THREE.MathUtils.smoothstep(seated, .55, 1);
+      const armAmount = hugging > 0 ? hugging : THREE.MathUtils.smoothstep(seated, .55, 1);
       for (const [side, arm] of [[-1, leftArm.current], [1, rightArm.current]] as const) {
         if (!arm) continue;
         arm.children.forEach(child => {
           if (!armRest.current.has(child)) armRest.current.set(child, { p: child.position.clone(), s: child.scale.clone(), q: child.quaternion.clone() });
           const r = armRest.current.get(child)!; child.position.copy(r.p); child.scale.copy(r.s); child.quaternion.copy(r.q);
         });
-        if (!armAmount || !sitting) continue;
+        if (!armAmount || (!sitting && !hug)) continue;
         arm.quaternion.slerp(k.identity, armAmount);
-        k.target.copy(sitting.current.hand); root.current.worldToLocal(k.target);
-        const inner = Math.sign(k.target.x) === side;
-        if (!inner) k.target.set(side * .26, .57, .20);
+        if (hugging > 0 && hug) {
+          k.target.copy(hug.current.hands[side < 0 ? 0 : 1]);
+          arm.parent!.updateWorldMatrix(true, false); arm.parent!.worldToLocal(k.target);
+        } else if (sitting) {
+          k.target.copy(sitting.current.hand); root.current.worldToLocal(k.target);
+          const inner = Math.sign(k.target.x) === side;
+          if (!inner) k.target.set(side * .26, .57, .20);
+        }
         k.dir.copy(k.target).sub(arm.position); const distance = k.dir.length(); k.dir.normalize();
-        k.bend.copy(k.down).addScaledVector(k.dir, -k.down.dot(k.dir)).normalize();
-        const length = Math.max(.195, distance * .51), height = Math.sqrt(Math.max(0, length * length - distance * distance / 4));
+        if (hugging > 0) k.bend.set(side, -.2, 0);
+        else k.bend.copy(k.down);
+        k.bend.addScaledVector(k.dir, -k.bend.dot(k.dir)).normalize();
+        const length = Math.max(.195, distance * (hugging > 0 ? .56 : .51)), height = Math.sqrt(Math.max(0, length * length - distance * distance / 4));
         k.elbow.copy(arm.position).addScaledVector(k.dir, distance / 2).addScaledVector(k.bend, height);
         k.upper.copy(k.elbow).sub(arm.position); k.lower.copy(k.target).sub(k.elbow);
         k.q1.setFromUnitVectors(k.down, k.upper.clone().normalize()); k.q2.setFromUnitVectors(k.down, k.lower.clone().normalize());
@@ -282,7 +306,8 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
       <circleGeometry args={[.43, 24]} /><meshBasicMaterial color="#392c43" transparent opacity={.18} depthWrite={false} />
     </mesh>
     <group ref={root} scale={[1, rose ? 1 : 1.055, 1]}>
-      <mesh geometry={rose ? shirt : tuckedShirt} material={materials.outfit} position={[0, rose ? .49 : .59, 0]} scale={[1, 1, rose ? 1 : .85]} castShadow />
+      <mesh ref={shirtMesh} geometry={rose ? shirt : tuckedShirt} material={materials.outfit} position={[0, rose ? .49 : .59, 0]} scale={[1, 1, rose ? 1 : .85]} castShadow />
+      <group ref={chest} name="hug-upper-body" position={[0, .49, 0]}><group position={[0, -.49, 0]}>
       {rose ? <>
         <mesh ref={skirt} geometry={frock} material={materials.outfit} position={[0, .32, 0]} castShadow />
         {[-1, 1].map(side => <mesh name="school-scarf-front" key={side} geometry={scarf} material={materials.white} scale={[side, 1, 1]} />)}
@@ -305,6 +330,7 @@ export default function Chibi({ suspended = false, sitting, kissContact, wishEye
         {pebble('hand', [side * .04, -.31, .015], [.073, .075, .065], materials.skin)}
         {pebble('thumb', [side * -.008, -.295, .06], [.03, .04, .03], materials.skin)}
       </group>)}
+      </group></group>
       {[-1, 1].map(side => <group name={side < 0 ? 'left-leg' : 'right-leg'} key={side} ref={side < 0 ? leftLeg : rightLeg} position={[side * .13, .49, 0]}>
         {pebble('leg', [0, -.16, 0], [rose ? .098 : .092, .205, .1], rose ? materials.white : materials.trousers)}
         <group ref={side < 0 ? leftKnee : rightKnee} name="knee" position={[0, -.18, 0]}>

@@ -1,4 +1,4 @@
-export const LOVE_LETTER_POSITION: [number, number, number] = [45, .925, 3.15];
+export const LOVE_LETTER_POSITION: [number, number, number] = [44, .924, 3.2];
 export const LOVE_LETTER_TEXT = `My favorite person,
 
 Some of my favorite memories are the little moments that might seem ordinary to everyone else, but mean everything to me because they have you in them.

@@ -10,8 +10,12 @@ await ev(`(async()=>{const f=await import(performance.getEntriesByType('resource
 const until=async expression=>{for(let i=0;i<100;i++){if(await ev(expression))return;await wait(100)}throw Error('Timeout '+expression)};
 const snapshot=()=>ev(`(()=>{s.scene.updateMatrixWorld(true);return {camera:[...s.camera.position.toArray(),...s.camera.quaternion.toArray()],actors:actors.map(a=>{const v=[];a.traverse(o=>v.push([...o.position.toArray(),...o.quaternion.toArray(),...o.scale.toArray()]));return v})}})()`);
 assert.equal(await ev('!!document.querySelector(".secret-letter-prompt")'),false);
-await ev('actors[0].position.set(45,0,1.6);actors[1].position.set(44.1,0,1.4)');await wait(1800);
-await until('!!document.querySelector(".secret-letter-prompt")');assert.equal(await ev('!!document.querySelector(".love-letter")'),false,'approach never opens automatically');
+await ev('actors[0].position.set(44,0,1.6);actors[1].position.set(43.1,0,1.4)');await wait(1800);
+await until('!!document.querySelector(".secret-letter-prompt")');assert.ok(await ev('!!s.scene.getObjectByName("golden-gallery").getObjectByName("love-letter-table")'));
+assert.equal(await ev('!!s.scene.getObjectByName("golden-gallery").getObjectByName("gallery-bench")'),false);
+assert.ok(await ev('!!s.scene.getObjectByName("midnight-gallery").getObjectByName("gallery-bench")'));
+assert.ok(await ev(`(()=>{const table=s.scene.getObjectByName('golden-gallery').getObjectByName('love-letter-table'),envelope=s.scene.getObjectByName('secret-love-envelope');return Math.abs(envelope.position.x-44)<.01&&envelope.children[1].material.emissiveIntensity>.5})()`));
+assert.equal(await ev('!!document.querySelector(".love-letter")'),false,'approach never opens automatically');
 const envelopeShot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('../secret-envelope-discovery.png',Buffer.from(envelopeShot.result.data,'base64'));
 await click('.secret-letter-prompt');await wait(200);
 assert.equal(await ev('sceneProps.controls.paused&&sceneProps.cameraState.inputLocked'),true);
@@ -30,14 +34,14 @@ await click('.letter-keep');await wait(200);assert.equal(await ev('sceneProps.co
 assert.equal(await ev('!!document.querySelector(".love-letter")'),false);
 await call('Emulation.setDeviceMetricsOverride',{width:1200,height:850,deviceScaleFactor:1,mobile:false});await wait(800);
 // Point the existing camera at the actual envelope to exercise mesh picking.
-await ev(`s.setFrameloop('never');s.camera.position.set(45,1.6,.8);s.camera.lookAt(45,.925,3.15);s.camera.updateMatrixWorld();s.camera.updateProjectionMatrix();s.scene.updateMatrixWorld(true);s.gl.render(s.scene,s.camera);window.envelopeScreen=()=>{const p=s.scene.getObjectByName('secret-love-envelope').getWorldPosition(new T.Vector3()).project(s.camera);return{x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2}}`);
+await ev(`s.setFrameloop('never');s.camera.position.set(44,1.8,.8);s.camera.lookAt(44,.924,3.2);s.camera.updateMatrixWorld();s.camera.updateProjectionMatrix();s.scene.updateMatrixWorld(true);s.gl.render(s.scene,s.camera);window.envelopeScreen=()=>{const p=s.scene.getObjectByName('secret-love-envelope').getWorldPosition(new T.Vector3()).project(s.camera);return{x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2}}`);
 let p=await ev('envelopeScreen()');
 await call('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1});await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x+35,y:p.y+5,buttons:1});await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:p.x+35,y:p.y+5,button:'left',clickCount:1});await wait(400);assert.equal(await ev('!!document.querySelector(".love-letter")'),false,'dragging envelope never opens');
 await call('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1});await call('Input.dispatchMouseEvent',{type:'mouseReleased',...p,button:'left',clickCount:1});await until('!!document.querySelector(".love-letter")');
 await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await wait(150);assert.equal(await ev('!!document.querySelector(".love-letter")'),false);
 await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
 p=await ev('envelopeScreen()');await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,...p}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await until('!!document.querySelector(".love-letter")');await click('.letter-keep');
-await ev(`s.setFrameloop('always')`);await key('w',true);await wait(400);await key('w',false);assert.ok(await ev('actors[0].position.distanceTo(new T.Vector3(45,0,1.6))>.1'),'movement restored');
+await ev(`s.setFrameloop('always')`);await key('w',true);await wait(400);await key('w',false);assert.ok(await ev('actors[0].position.distanceTo(new T.Vector3(44,0,1.6))>.1'),'movement restored');
 await ev('actors[0].position.set(22,0,0);actors[1].position.set(21,0,0)');await wait(400);assert.equal(await ev('!!document.querySelector(".secret-letter-prompt")'),false,'no prompt in other rooms');
 assert.deepEqual(errors,[]);console.log('PASS Room 3 proximity, no auto-open, progressive text/skip, full camera and actor freeze, portrait/landscape scrolling, mesh mouse/touch, drag guard, reopen, Escape and movement resume');
 }finally{await ev('if(window.s)s.setFrameloop("always")');await call('Emulation.setTouchEmulationEnabled',{enabled:false});await call('Emulation.setEmulatedMedia',{features:[]});ws.close();}

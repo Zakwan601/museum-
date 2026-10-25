@@ -68,7 +68,7 @@ const heartBorder = new THREE.ShapeGeometry(borderShape);
 function GalleryInterior({ golden, active, compact, reducedMotion, couch, cameraState, onCouchStart }: { golden: boolean; active: boolean; compact: boolean; reducedMotion: boolean; couch: CouchState; cameraState: CameraState; onCouchStart: () => void }) {
   const theme = golden ? GALLERY_THEMES.university : GALLERY_THEMES.college;
   const index = golden ? 2 : 1, center = MUSEUM_ROOMS[index].centerX;
-  const bench = MUSEUM_FURNITURE.find(p => p.id === `gallery-bench-${index - 1}`)!;
+  const bench = MUSEUM_FURNITURE.find(p => p.id === (golden ? 'love-letter-table' : 'gallery-bench-0'))!;
   const decor = useMemo(() => {
     const parts: Part[] = [], wood: Part[] = [], blossoms: Part[] = [];
     const add = (position: Part['position'], size: Part['size'], color: string) => parts.push({ position, size, color });
@@ -91,11 +91,13 @@ function GalleryInterior({ golden, active, compact, reducedMotion, couch, camera
       for (const y of [.12, 1.1, 4.65]) add([x, y, z], [.15, .075, 4.65], theme.trim);
     }
     // Leave the ceiling open for the soft, hanging fairy-light canopy.
-    // The bench matches the collision footprint in museumLayout.
-    for (const x of [-1.3, 1.3]) for (const z of [2.85, 3.55]) add([x, .23, z], [.09, .46, .09], theme.gold);
-    add([0, .78, 3.64], [3.05, .4, .1], theme.fabric);
-    add([0, .95, 3.64], [3.15, .045, .14], theme.gold);
-    for (const x of [-1.55, 1.55]) add([x, .69, 3.23], [.07, .12, 1], theme.gold);
+    // Keep the existing College couch; Room 3 gets its own small letter table.
+    if (!golden) {
+      for (const x of [-1.3, 1.3]) for (const z of [2.85, 3.55]) add([x, .23, z], [.09, .46, .09], theme.gold);
+      add([0, .78, 3.64], [3.05, .4, .1], theme.fabric);
+      add([0, .95, 3.64], [3.15, .045, .14], theme.gold);
+      for (const x of [-1.55, 1.55]) add([x, .69, 3.23], [.07, .12, 1], theme.gold);
+    }
     // Two restrained floral arrangements, away from the main route.
     for (const x of [-7.5, 7.5]) {
       add([x, .28, -5.0], [.4, .56, .4], theme.trim);
@@ -125,11 +127,20 @@ function GalleryInterior({ golden, active, compact, reducedMotion, couch, camera
     <Batch parts={decor.wood} />
     <Batch parts={decor.parts} />
     <Batch parts={decor.blossoms} geometry={orb} />
+    {golden ? <group name="love-letter-table" position={[0, 0, bench.position[2]]} userData={{ cameraObstacle: true }}>
+      <mesh position={[0, .86, 0]} castShadow receiveShadow><cylinderGeometry args={[.7, .68, .09, 32]} /><meshStandardMaterial color="#f3dfd1" roughness={.7} /></mesh>
+      <mesh position={[0, .883, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[.685, .012, 6, 32]} /><meshStandardMaterial color={theme.gold} metalness={.35} roughness={.5} /></mesh>
+      <mesh position={[0, .908, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[.54, 32]} /><meshStandardMaterial color="#dca7a8" roughness={1} /></mesh>
+      <mesh position={[0, .45, 0]} castShadow><cylinderGeometry args={[.09, .14, .74, 16]} /><meshStandardMaterial color="#f3dfd1" roughness={.75} /></mesh>
+      <mesh position={[0, .075, 0]} scale={[1, .4, 1]}><sphereGeometry args={[.34, 20, 10]} /><meshStandardMaterial color="#f3dfd1" roughness={.75} /></mesh>
+      <mesh position={[0, .11, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[.27, .012, 6, 24]} /><meshStandardMaterial color={theme.gold} metalness={.35} roughness={.5} /></mesh>
+    </group> : <>
     <group position={[0, 0, bench.position[2]]} userData={{ cameraObstacle: true, interactiveCouch: !golden }} name="gallery-bench" onClick={e => { if (!golden && couch.nearby && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) { e.stopPropagation(); onCouchStart(); } }}>
       <mesh geometry={cushion} position={[0, .49, -.4]} castShadow><meshStandardMaterial color={theme.fabric} roughness={.94} /></mesh>
       <mesh position={[0, .78, .44]}><boxGeometry args={[3.05, .4, .1]} /><meshStandardMaterial color={theme.fabric} roughness={.94} /></mesh>
     </group>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .028, 3.2]} scale={[1, .65, 1]} raycast={noRaycast}>
+    </>}
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .028, 3.2]} scale={golden ? [.6, .6, 1] : [1, .65, 1]} raycast={noRaycast}>
       <circleGeometry args={[2.1, 48]} /><meshStandardMaterial color={golden ? '#c6aa81' : '#354768'} roughness={1} />
     </mesh>
     <WallWords text={golden ? 'University Life' : 'College Days'} subtitle={golden ? 'Side by side, through every season' : 'The little moments that became us'} position={[0, 3.85, -6.77]} color={theme.trim} />

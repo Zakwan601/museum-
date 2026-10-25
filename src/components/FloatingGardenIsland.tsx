@@ -17,12 +17,12 @@ type Plant = { p: [number, number, number]; s: [number, number, number]; color: 
 function makeSurface() {
   const positions: number[] = [0, 0, 0], colors: number[] = [], indices: number[] = [];
   const groundColor = (x: number, z: number) => {
-    const c = new THREE.Color('#82987b');
+    const c = new THREE.Color('#7fae88');
     const softness = .5 + .5 * Math.sin(x * .8 + z * .55);
-    c.lerp(new THREE.Color('#9eac8c'), softness * .26);
+    c.lerp(new THREE.Color('#c2d49a'), softness * .32);
     for (const bed of flowerBeds) {
       const patch = Math.max(0, 1 - Math.hypot(x - bed.x, z - bed.z) / 1.05);
-      c.lerp(new THREE.Color('#627e65'), patch * .5);
+      c.lerp(new THREE.Color('#709b86'), patch * .32);
     }
     return c;
   };
@@ -73,15 +73,15 @@ function makeStratum(rings: RockRing[], tint: string, phase: number) {
 
 const surface = makeSurface();
 const strata = [
-  makeStratum([{ scale: 1, y: -.075 }, { scale: 1.015, y: -.32 }, { scale: .90, y: -.64 }], '#85877d', .3),
-  makeStratum([{ scale: .92, y: -.5 }, { scale: .86, y: -1.2, shift: .02 }, { scale: .72, y: -1.8, shift: .08 }], '#777784', 1.1),
-  makeStratum([{ scale: .75, y: -1.62, shift: .08 }, { scale: .55, y: -2.42, shift: .16 }, { scale: .28, y: -3, shift: .3 }, { scale: 0, y: -3.35, shift: .55 }], '#596478', 2.3),
+  makeStratum([{ scale: 1, y: -.075 }, { scale: 1.015, y: -.32 }, { scale: .90, y: -.64 }], '#b19aab', .3),
+  makeStratum([{ scale: .92, y: -.5 }, { scale: .86, y: -1.2, shift: .02 }, { scale: .72, y: -1.8, shift: .08 }], '#9283ad', 1.1),
+  makeStratum([{ scale: .75, y: -1.62, shift: .08 }, { scale: .55, y: -2.42, shift: .16 }, { scale: .28, y: -3, shift: .3 }, { scale: 0, y: -3.35, shift: .55 }], '#656c96', 2.3),
 ];
-const groundMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+const groundMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, emissive: '#52705b', emissiveIntensity: .055 });
 const rockMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
 const plantMaterial = new THREE.MeshStandardMaterial({ roughness: 1 });
-const petalMaterial = new THREE.MeshStandardMaterial({ roughness: .95, emissive: '#f0d3df', emissiveIntensity: .045 });
-const centerMaterial = new THREE.MeshStandardMaterial({ roughness: 1, emissive: '#f7dfb0', emissiveIntensity: .12 });
+const petalMaterial = new THREE.MeshStandardMaterial({ roughness: .95, emissive: '#ffe1ec', emissiveIntensity: .16 });
+const centerMaterial = new THREE.MeshStandardMaterial({ roughness: 1, emissive: '#f7dfb0', emissiveIntensity: .2 });
 
 function PlantBatch({ name, parts, geometry = pebble, material = plantMaterial }: { name: string; parts: Plant[]; geometry?: THREE.BufferGeometry; material?: THREE.Material }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
@@ -106,11 +106,17 @@ const garden = (() => {
   const petals: Plant[] = [], centers: Plant[] = [], greens: Plant[] = [], blades: Plant[] = [], stones: Plant[] = [];
   const offsets = [[-.23, .04, 1], [.06, -.17, .75], [.3, .12, .9], [-.06, .3, .62], [.18, .39, 1.07], [-.32, .36, .8], [.39, -.19, .67]];
   flowerBeds.forEach((bed, bedIndex) => {
+    // A handful of fallen petals nestles around each bed, never across the route.
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.4 + bedIndex * .8, radius = .3 + (i % 3) * .11;
+      const x = bed.x + Math.cos(a) * radius, z = bed.z + Math.sin(a) * radius * .7;
+      petals.push({ p: [x, heightAt(x, z) + .023, z], s: [.046 + (i % 2) * .015, .006, .025], rotation: [0, a, .05], color: i % 2 ? bed.color : bed.accent });
+    }
     for (let i = 0; i < bed.count; i++) {
       const [dx, dz, size] = offsets[i], x = bed.x + dx, z = bed.z + dz;
       const ground = heightAt(x, z), h = .16 + size * .12, spread = .056 * size;
-      blades.push({ p: [x, ground + h / 2, z], s: [.009, h, .009], color: '#5c8061' });
-      greens.push({ p: [x + .035, ground + h * .42, z + .008], s: [.057 * size, .012, .024 * size], rotation: [0, bedIndex + i * .8, .25], color: '#74966f' });
+      blades.push({ p: [x, ground + h / 2, z], s: [.009, h, .009], color: '#548c69' });
+      greens.push({ p: [x + .035, ground + h * .42, z + .008], s: [.057 * size, .012, .024 * size], rotation: [0, bedIndex + i * .8, .25], color: '#83b480' });
       for (let petal = 0; petal < 5; petal++) {
         const a = petal / 5 * Math.PI * 2 + i * .6;
         petals.push({ p: [x + Math.cos(a) * spread, ground + h + .008 * Math.sin(a), z + Math.sin(a) * spread], s: [.061 * size, .021 * size, .038 * size], rotation: [0, -a, .08], color: i % 3 ? bed.color : bed.accent });
@@ -124,10 +130,10 @@ const garden = (() => {
       const a = i * 2.4 + patch, r = .055 + (i % 4) * .065;
       const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
       const h = .13 + ((i + patch) % 4) * .037;
-      blades.push({ p: [px, heightAt(px, pz) + h / 2, pz], s: [.027, h, .017], rotation: [.13 * Math.cos(a), a, .18 * Math.sin(a)], color: ['#718e6d', '#8ca17d', '#a2b28a'][(i + patch) % 3] });
+      blades.push({ p: [px, heightAt(px, pz) + h / 2, pz], s: [.027, h, .017], rotation: [.13 * Math.cos(a), a, .18 * Math.sin(a)], color: ['#68a17e', '#94bd86', '#beca8a'][(i + patch) % 3] });
     }
   });
-  [[2.8, 1.2, .22], [2.58, 1.39, .12], [-2.8, -.38, .23], [-2.56, -.15, .13], [.9, -2.35, .16]].forEach(([x, z, size], i) => stones.push({ p: [x, heightAt(x, z) + size * .18, z], s: [size, size * .4, size * .7], rotation: [0, i * .7, .1], color: i % 2 ? '#95968a' : '#92929c' }));
+  [[2.8, 1.2, .22], [2.58, 1.39, .12], [-2.8, -.38, .23], [-2.56, -.15, .13], [.9, -2.35, .16]].forEach(([x, z, size], i) => stones.push({ p: [x, heightAt(x, z) + size * .18, z], s: [size, size * .4, size * .7], rotation: [0, i * .7, .1], color: i % 2 ? '#c3aaa8' : '#b4a5c6' }));
   return { petals, centers, greens, blades, stones };
 })();
 

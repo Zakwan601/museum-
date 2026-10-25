@@ -10,7 +10,7 @@ export const MUSEUM_BOUNDS = { minX: -ROOM.width / 2, maxX: MUSEUM_ROOMS[3].cent
 export interface MuseumWall { id: string; position: [number, number, number]; size: [number, number, number] }
 // Low furniture stays outside the central doorway-to-doorway walking route.
 export const MUSEUM_FURNITURE: MuseumWall[] = [22, 44].flatMap((x, i) => [
-  { id: `gallery-bench-${i}`, position: [x, .44, 3.2] as [number, number, number], size: [3.2, .88, 1.05] as [number, number, number] },
+  { id: i === 0 ? 'gallery-bench-0' : 'love-letter-table', position: [x, i === 0 ? .44 : .46, 3.2] as [number, number, number], size: (i === 0 ? [3.2, .88, 1.05] : [1.4, .92, 1.4]) as [number, number, number] },
   ...[-1, 1].map(side => ({ id: `gallery-flowers-${i}-${side}`, position: [x + side * 7.5, .55, -5.0] as [number, number, number], size: [.6, 1.1, .6] as [number, number, number] })),
 ]);
 

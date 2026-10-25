@@ -1,3 +1,4 @@
+import { createHugPose, hugLean } from '../lib/hug';
 import FootstepSparkles from './FootstepSparkles';
 import { COUCH, createSittingPose } from '../lib/couch';
 import type { CouchState } from '../lib/couch';
@@ -34,6 +35,7 @@ export default function Character({ suspended = false, couch, ending, cake, tran
   const lastRelocation = useRef(0);
   const companionVelocity = useRef(new THREE.Vector3());
   const kissPose = useRef(0);
+  const girlHug = useRef(createHugPose()), boyHug = useRef(createHugPose());
   const kissContact = useRef(new THREE.Vector3());
   const alignmentWaypoint = useRef(new THREE.Vector3());
   const wishEyes = useRef(0);
@@ -104,6 +106,7 @@ export default function Character({ suspended = false, couch, ending, cake, tran
     }
     if (couchWasActive.current) { couchWasActive.current = false; couchResting.current = true; }
     girlSit.current.amount = boySit.current.amount = 0; girlSit.current.holding = boySit.current.holding = false;
+    girlHug.current.amount = boyHug.current.amount = 0;
     kiss.pairDistance = group.current.position.distanceTo(companion.current.position);
     if (endingFrozen(ending)) return;
     receiver.current.amount = giver.current.amount = 0; bouquet.current.visible = false;
@@ -152,6 +155,20 @@ export default function Character({ suspended = false, couch, ending, cake, tran
       kissContact.current.copy(kiss.center).setY(1.085);
       kissPose.current = kiss.mode === 'kiss' ? ease((t - 1.5) / .6) * (1 - ease((t - 4.2) / .5)) : 0;
       photoPose.current = kiss.mode === 'photo' ? ease((t - 1) / .8) * (1 - retreat) : 0;
+      if (kiss.mode === 'hug') {
+        const amount = ease((t - 1.4) / 1.2) * (1 - ease((t - 4.5) / 1.2));
+        const gap = state.player.distanceTo(state.partner), lean = hugLean(gap) * amount;
+        const embrace = (pose: typeof girlHug.current, partner: THREE.Group, partnerScale: number, height: number) => {
+          pose.amount = amount; pose.gap = gap;
+          for (const side of [-1, 1]) {
+            const point = pose.hands[side < 0 ? 0 : 1];
+            point.set(-side * .27, .012 + (.49 + (height - .49) * Math.cos(lean) - .07 * Math.sin(lean)) * partnerScale, (height - .49) * Math.sin(lean) + .07 * Math.cos(lean));
+            point.applyAxisAngle(THREE.Object3D.DEFAULT_UP, partner.rotation.y).add(partner.position);
+          }
+        };
+        embrace(girlHug.current, companion.current, 1.055, .76);
+        embrace(boyHug.current, group.current, 1, .88);
+      }
       if (gifting) {
         const scratch = giftScratch.current, offer = ease((t - 2) / 1.4), accept = ease((t - 4) / 1.6);
         scratch.boy.set(0, .68, .31).applyAxisAngle(THREE.Object3D.DEFAULT_UP, companion.current.rotation.y).add(companion.current.position);
@@ -380,8 +397,8 @@ export default function Character({ suspended = false, couch, ending, cake, tran
   return <>
     <FootstepSparkles position={charPos} motion={motion} enabled={!suspended && !reducedMotion && !controls.paused && !kiss.active && !endingFrozen(ending) && couch.phase === 'idle'} />
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi suspended={suspended} sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi suspended={suspended} sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi hug={girlHug} suspended={suspended} sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi hug={boyHug} suspended={suspended} sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 
