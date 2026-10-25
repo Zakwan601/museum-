@@ -1,3 +1,5 @@
+import type { CouchState } from '../lib/couch';
+import type { CameraState } from '../controls';
 import RomanticDetails from './RomanticDetails';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -63,7 +65,7 @@ borderShape.holes.push(new THREE.Path(heartShape.getPoints(32).map(p => p.multip
 const heartBorder = new THREE.ShapeGeometry(borderShape);
 
 
-function GalleryInterior({ golden, active, compact, reducedMotion }: { golden: boolean; active: boolean; compact: boolean; reducedMotion: boolean }) {
+function GalleryInterior({ golden, active, compact, reducedMotion, couch, cameraState, onCouchStart }: { golden: boolean; active: boolean; compact: boolean; reducedMotion: boolean; couch: CouchState; cameraState: CameraState; onCouchStart: () => void }) {
   const theme = golden ? GALLERY_THEMES.university : GALLERY_THEMES.college;
   const index = golden ? 2 : 1, center = MUSEUM_ROOMS[index].centerX;
   const bench = MUSEUM_FURNITURE.find(p => p.id === `gallery-bench-${index - 1}`)!;
@@ -123,7 +125,7 @@ function GalleryInterior({ golden, active, compact, reducedMotion }: { golden: b
     <Batch parts={decor.wood} />
     <Batch parts={decor.parts} />
     <Batch parts={decor.blossoms} geometry={orb} />
-    <group position={[0, 0, bench.position[2]]} userData={{ cameraObstacle: true }} name="gallery-bench">
+    <group position={[0, 0, bench.position[2]]} userData={{ cameraObstacle: true, interactiveCouch: !golden }} name="gallery-bench" onClick={e => { if (!golden && couch.nearby && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) { e.stopPropagation(); onCouchStart(); } }}>
       <mesh geometry={cushion} position={[0, .49, -.4]} castShadow><meshStandardMaterial color={theme.fabric} roughness={.94} /></mesh>
       <mesh position={[0, .78, .44]}><boxGeometry args={[3.05, .4, .1]} /><meshStandardMaterial color={theme.fabric} roughness={.94} /></mesh>
     </group>
@@ -144,9 +146,9 @@ function GalleryInterior({ golden, active, compact, reducedMotion }: { golden: b
   </group>;
 }
 
-export default function IndoorGalleries({ compact, activeRoomIndex, reducedMotion = false }: { compact: boolean; activeRoomIndex: number; reducedMotion?: boolean }) {
+export default function IndoorGalleries({ compact, activeRoomIndex, reducedMotion = false, couch, cameraState, onCouchStart }: { compact: boolean; activeRoomIndex: number; reducedMotion?: boolean; couch: CouchState; cameraState: CameraState; onCouchStart: () => void }) {
   return <>
-    <GalleryInterior golden={false} active={activeRoomIndex === 1} compact={compact} reducedMotion={reducedMotion} />
-    <GalleryInterior golden active={activeRoomIndex === 2} compact={compact} reducedMotion={reducedMotion} />
+    <GalleryInterior golden={false} active={activeRoomIndex === 1} compact={compact} reducedMotion={reducedMotion} couch={couch} cameraState={cameraState} onCouchStart={onCouchStart} />
+    <GalleryInterior golden active={activeRoomIndex === 2} compact={compact} reducedMotion={reducedMotion} couch={couch} cameraState={cameraState} onCouchStart={onCouchStart} />
   </>;
 }

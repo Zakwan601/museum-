@@ -1,3 +1,5 @@
+import { COUCH, createSittingPose } from '../lib/couch';
+import type { CouchState } from '../lib/couch';
 import { CAKE, constrainCakePosition, cakeCeremonyActive } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import { constrainGardenPosition } from '../lib/gardenLayout';
@@ -16,9 +18,13 @@ import { createMomentPath, planMomentPath, sampleMomentPosition, momentFacing } 
 import type { KissState } from '../lib/kiss';
 import { constrainMuseumPosition, museumRoomAt, PASSAGE, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { ending: EndingState; cake: CakeState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
-export default function Character({ ending, cake, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
+interface Props { couch: CouchState; ending: EndingState; cake: CakeState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
+export default function Character({ couch, ending, cake, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
   const group = useRef<THREE.Group>(null), companion = useRef<THREE.Group>(null);
+  const couchWasActive = useRef(false), couchResting = useRef(false);
+  const girlSit = useRef(createSittingPose()), boySit = useRef(createSittingPose());
+  const couchPath = useRef(createMomentPath());
+  const couchSaved = useRef({ sequence: 0, relocation: 0, girl: new THREE.Vector3(), boy: new THREE.Vector3(), girlYaw: 0, boyYaw: 0 });
   const velocity = useRef(new THREE.Vector3()), follow = useRef(new THREE.Vector3());
   const motion = useRef(0), companionMotion = useRef(0), heading = useRef(0);
   const followSide = useRef(1);
@@ -56,6 +62,45 @@ export default function Character({ ending, cake, transition, controls, cameraSt
       motion.current = companionMotion.current = 0;
       charPos.copy(group.current.position); companionPos.copy(companion.current.position);
     }
+    const cs = couchSaved.current;
+    if (couch.cancelled) {
+      if (cs.sequence && cs.relocation === transition.relocation && museumRoomAt(group.current.position.x).id === 'college') {
+        group.current.position.copy(cs.girl); companion.current.position.copy(cs.boy);
+        group.current.rotation.y = cs.girlYaw; companion.current.rotation.y = cs.boyYaw;
+      }
+      couch.cancelled = false; heading.current = group.current.rotation.y;
+    }
+    if (couch.phase !== 'idle') {
+      couchWasActive.current = true; couchResting.current = false;
+      if (cs.sequence !== couch.sequence) {
+        cs.sequence = couch.sequence; cs.relocation = transition.relocation;
+        cs.girl.copy(group.current.position); cs.boy.copy(companion.current.position);
+        cs.girlYaw = group.current.rotation.y; cs.boyYaw = companion.current.rotation.y;
+        const side = cs.boy.x >= cs.girl.x ? 1 : -1;
+        planMomentPath(couchPath.current, cs.girl, cs.boy, new THREE.Vector3(COUCH.x, 0, COUCH.seatZ), new THREE.Vector3(side, 0, 0), .88);
+      }
+      const amount = couch.phase === 'seated' ? 1 : couch.phase === 'entering' ? ease(couch.elapsed / COUCH.seconds) : 1 - ease(couch.elapsed / COUCH.seconds);
+      sampleMomentPosition(couchPath.current, amount, -1, group.current.position);
+      sampleMomentPosition(couchPath.current, amount, 1, companion.current.position);
+      group.current.position.y = (COUCH.hipY - .49 - .012) * amount;
+      companion.current.position.y = (COUCH.hipY - .49 * 1.055 - .012) * amount;
+      const turn = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
+      group.current.rotation.y = cs.girlYaw + turn(Math.PI, cs.girlYaw) * amount;
+      companion.current.rotation.y = cs.boyYaw + turn(Math.PI, cs.boyYaw) * amount;
+      girlSit.current.amount = boySit.current.amount = amount;
+      girlSit.current.holding = boySit.current.holding = couch.phase === 'seated';
+      const side = cs.boy.x >= cs.girl.x ? 1 : -1;
+      girlSit.current.hand.set(COUCH.x - side * .065, .94, COUCH.seatZ - .23);
+      boySit.current.hand.set(COUCH.x + side * .065, .94, COUCH.seatZ - .23);
+      velocity.current.set(0, 0, 0); companionVelocity.current.set(0, 0, 0); motion.current = companionMotion.current = 0;
+      kissPose.current = photoPose.current = 0; receiver.current.amount = giver.current.amount = 0; bouquet.current.visible = false;
+      charPos.copy(group.current.position); companionPos.copy(companion.current.position);
+      heading.current = group.current.rotation.y;
+      couch.completed = couch.phase !== 'seated' && couch.elapsed === COUCH.seconds;
+      return;
+    }
+    if (couchWasActive.current) { couchWasActive.current = false; couchResting.current = true; }
+    girlSit.current.amount = boySit.current.amount = 0; girlSit.current.holding = boySit.current.holding = false;
     kiss.pairDistance = group.current.position.distanceTo(companion.current.position);
     if (endingFrozen(ending)) return;
     receiver.current.amount = giver.current.amount = 0; bouquet.current.visible = false;
@@ -188,6 +233,13 @@ export default function Character({ ending, cake, transition, controls, cameraSt
         setGiftHands(actor, receiver.current, 1);
       }
       return;
+    }
+    if (couchResting.current) {
+      if (transition.active || museumRoomAt(group.current.position.x).id !== 'college' || Math.hypot(controls.keyboardX, controls.keyboardY, controls.joystickX, controls.joystickY) > .08) couchResting.current = false;
+      else {
+        velocity.current.set(0, 0, 0); companionVelocity.current.set(0, 0, 0); motion.current = companionMotion.current = 0;
+        charPos.copy(group.current.position); companionPos.copy(companion.current.position); return;
+      }
     }
     let x = controls.keyboardX + controls.joystickX;
     let y = controls.keyboardY + controls.joystickY;
@@ -324,8 +376,8 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   }, -1);
   return <>
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

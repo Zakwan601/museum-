@@ -1,7 +1,9 @@
+import CuteWatch from './CuteWatch';
+import type { SittingPose } from '../lib/couch';
 import { endingFrozen } from '../lib/ending';
 import type { EndingState } from '../lib/ending';
 import { useMemo, useRef } from 'react';
-import type { MutableRefObject } from 'react';
+import type { MutableRefObject, ReactNode } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import RoundGlasses from './RoundGlasses';
@@ -44,9 +46,32 @@ function cloth(outline: number[][], depth = .008) {
   return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: .004, bevelThickness: .003, bevelSegments: 2, steps: 1, curveSegments: 4 });
 }
 const collar = cloth([[.035, .935], [.105, .95], [.19, .89], [.115, .825], [.065, .875]]);
-// Two broad white panels form the reference's open V-shaped scarf.
-const scarf = cloth([[.085, .95], [.19, .915], [.22, .83], [.125, .68], [-.085, .6], [-.15, .65], [.055, .77]]);
-const scarfTail = cloth([[-.1, .66], [-.005, .645], [.005, .38], [-.09, .36], [-.12, .46]]);
+// Soft, uncrossed front drapes, contoured to the bodice instead of flat X panels.
+const scarf = (() => {
+  const path = new THREE.CatmullRomCurve3([[.12,.935,0],[.155,.90,0],[.13,.82,0],[.11,.73,0],[.11,.675,0]].map(p => new THREE.Vector3(...p as [number,number,number])));
+  const rows=40, sides=12, vertices:number[]=[], indices:number[]=[];
+  const profile=[[.65,.24],[.84,.23],[.92,.195],[.95,.115]];
+  const surface=(x:number,y:number)=>{
+    let radius=.115;
+    for(let k=1;k<profile.length;k++)if(y<=profile[k][0]){const [a,r]=profile[k-1],[b,q]=profile[k];radius=THREE.MathUtils.lerp(r,q,THREE.MathUtils.clamp((y-a)/(b-a),0,1));break;}
+    return Math.sqrt(Math.max(.001,radius*radius-x*x))+.018;
+  };
+  for(let i=0;i<=rows;i++){
+    const t=i/rows,p=path.getPoint(t),d=path.getTangent(t),edge=Math.min(t,1-t);
+    const hem=.18+.82*Math.sqrt(Math.max(0,1-Math.max(0,1-edge/.065)**2));
+    for(let j=0;j<=sides;j++){
+      const angle=j/sides*Math.PI*2,across=Math.cos(angle)*.034*hem;
+      const x=p.x-d.y*across,y=p.y+d.x*across;
+      vertices.push(x,y,surface(x,y)+Math.sin(angle)*.008);
+    }
+  }
+  for(let i=0;i<rows;i++)for(let j=0;j<sides;j++){const a=i*(sides+1)+j,b=a+sides+1;indices.push(a,a+1,b,b,a+1,b+1);}
+  for(const end of [0,rows]){const p=path.getPoint(end/rows),center=vertices.length/3;vertices.push(p.x,p.y,surface(p.x,p.y));for(let j=0;j<sides;j++){const a=end*(sides+1)+j;if(!end)indices.push(center,a+1,a);else indices.push(center,a,a+1);}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();return g;
+})();
+const scarfBack = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+  [-.12,.932,.13],[-.16,.935,.02],[-.12,.936,-.10],[0,.938,-.155],[.12,.936,-.10],[.16,.935,.02],[.12,.932,.13],
+].map(p=>new THREE.Vector3(...p as [number,number,number]))),32,.024,8,false);
 const placket = cloth([[-.012, .865], [.012, .865], [.012, .625], [-.012, .625]], .003);
 const pocket = cloth([[.08, .82], [.165, .82], [.165, .745], [.12, .725], [.08, .745]], .003);
 function strand(points: number[][], width: number) {
@@ -61,13 +86,31 @@ function strand(points: number[][], width: number) {
   }
   g.computeVertexNormals(); return g;
 }
+// Small cloth house marker following the sleeve's rounded outer surface.
+const housePatch = (() => {
+  const vertices:number[]=[], indices:number[]=[], rows=6, cols=6, exponent=2/.84;
+  for(let i=0;i<=rows;i++)for(let j=0;j<=cols;j++){
+    const t=i/rows*2-1, y=.12+t*.27;
+    const corner=1-.18*Math.max(0,(Math.abs(t)-.66)/.34);
+    const z=.12+(j/cols*2-1)*.25*corner;
+    const x=Math.pow(Math.max(.001,1-Math.abs(y)**exponent-Math.abs(z)**exponent),1/exponent)+.014;
+    vertices.push(x,y,z);
+  }
+  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const a=i*(cols+1)+j,b=a+cols+1;indices.push(a,b,a+1,b,b+1,a+1);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();return g;
+})();
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const contactTarget = useRef(new THREE.Vector3()), mouthOffset = useRef(new THREE.Vector3());
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
+  const leftKnee = useRef<THREE.Group>(null), rightKnee = useRef<THREE.Group>(null);
+  const skirt = useRef<THREE.Mesh>(null), contactShadow = useRef<THREE.Mesh>(null);
+  const lastSit = useRef(-1);
+  const armRest = useRef(new Map<THREE.Object3D, { p: THREE.Vector3; s: THREE.Vector3; q: THREE.Quaternion }>());
+  const seatScratch = useMemo(() => ({ target: new THREE.Vector3(), dir: new THREE.Vector3(), bend: new THREE.Vector3(), elbow: new THREE.Vector3(), upper: new THREE.Vector3(), lower: new THREE.Vector3(), v: new THREE.Vector3(), scale: new THREE.Vector3(), q1: new THREE.Quaternion(), q2: new THREE.Quaternion(), palm: new THREE.Quaternion(), identity: new THREE.Quaternion(), down: new THREE.Vector3(0,-1,0) }), []);
   const leftLeg = useRef<THREE.Group>(null), rightLeg = useRef<THREE.Group>(null);
   const phase = useRef(rose ? 1.1 : 0), blend = useRef(0);
   const mouth = useRef<THREE.Mesh>(null);
@@ -79,6 +122,7 @@ export default function Chibi({ kissContact, wishEyes, ending, variant, motion, 
       hairLight: mat(rose ? '#8c5642' : '#08090b', .48), outfit: mat('#2456c4', .78),
       trousers: mat('#c6aa76', .85), white: mat('#faf9f5', .8), seam: mat('#1f47a1', .8), belt: mat('#292522', .65),
       buckle: new THREE.MeshStandardMaterial({ color: '#c9c8c3', metalness: .75, roughness: .3 }),
+      house: mat(rose ? '#bd304a' : '#3c995b', .95),
       trim: mat('#fff0dc'), dark: mat('#30283c', .18), iris: mat(rose ? '#926443' : '#686a98', .22),
       shine: new THREE.MeshBasicMaterial({ color: '#fffaf3' }), blush: mat('#ed919f'), sole: mat('#dedfdf'),
     };
@@ -101,6 +145,7 @@ export default function Chibi({ kissContact, wishEyes, ending, variant, motion, 
     });
   }, [rose]);
   useFrame(({ clock }, delta) => {
+    if (sitting?.current.holding && lastSit.current === 1) return;
     if (ending && endingFrozen(ending)) { if (eyes.current) eyes.current.scale.y = 1; return; }
     const dt = Math.min(delta, .05), time = clock.elapsedTime + (rose ? 1.3 : 0);
     const affection = kissPose?.current ?? 0;
@@ -175,20 +220,74 @@ export default function Chibi({ kissContact, wishEyes, ending, variant, motion, 
         grip.rotation.setFromUnitVectors(grip.rest, grip.direction.normalize()); arm.quaternion.slerp(grip.rotation, amount);
       }
     }
+    const seated = sitting?.current.amount ?? 0;
+    const previousSeat = lastSit.current; lastSit.current = seated;
+    if (contactShadow.current) { contactShadow.current.visible = seated < .99; (contactShadow.current.material as THREE.MeshBasicMaterial).opacity = .18 * (1 - seated); }
+    if (skirt.current) skirt.current.position.y = .32 + .07 * seated;
+    for (const knee of [leftKnee.current, rightKnee.current]) if (knee) knee.rotation.x = Math.PI / 2 * seated;
+    for (const leg of [leftLeg.current, rightLeg.current]) if (leg) {
+      leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, -Math.PI / 2, seated);
+      const thigh = leg.getObjectByName('leg');
+      if (thigh) { thigh.position.y = THREE.MathUtils.lerp(-.16, -.09, seated); thigh.scale.y = THREE.MathUtils.lerp(.205, .105, seated); }
+      const calf = leg.getObjectByName('seated-calf'); if (calf) calf.visible = seated > .001;
+    }
+    if (seated > 0 && root.current) {
+      root.current.position.y = .012; root.current.rotation.z = 0;
+      if (head.current) { head.current.rotation.set(0, 0, 0); head.current.position.set(0, 1.23, 0); }
+      if (eyes.current) eyes.current.scale.y = 1;
+    }
+    if ((seated > 0 || previousSeat > 0) && root.current) {
+      const k = seatScratch;
+      root.current.updateWorldMatrix(true, false);
+      const armAmount = THREE.MathUtils.smoothstep(seated, .55, 1);
+      for (const [side, arm] of [[-1, leftArm.current], [1, rightArm.current]] as const) {
+        if (!arm) continue;
+        arm.children.forEach(child => {
+          if (!armRest.current.has(child)) armRest.current.set(child, { p: child.position.clone(), s: child.scale.clone(), q: child.quaternion.clone() });
+          const r = armRest.current.get(child)!; child.position.copy(r.p); child.scale.copy(r.s); child.quaternion.copy(r.q);
+        });
+        if (!armAmount || !sitting) continue;
+        arm.quaternion.slerp(k.identity, armAmount);
+        k.target.copy(sitting.current.hand); root.current.worldToLocal(k.target);
+        const inner = Math.sign(k.target.x) === side;
+        if (!inner) k.target.set(side * .26, .57, .20);
+        k.dir.copy(k.target).sub(arm.position); const distance = k.dir.length(); k.dir.normalize();
+        k.bend.copy(k.down).addScaledVector(k.dir, -k.down.dot(k.dir)).normalize();
+        const length = Math.max(.195, distance * .51), height = Math.sqrt(Math.max(0, length * length - distance * distance / 4));
+        k.elbow.copy(arm.position).addScaledVector(k.dir, distance / 2).addScaledVector(k.bend, height);
+        k.upper.copy(k.elbow).sub(arm.position); k.lower.copy(k.target).sub(k.elbow);
+        k.q1.setFromUnitVectors(k.down, k.upper.clone().normalize()); k.q2.setFromUnitVectors(k.down, k.lower.clone().normalize());
+        const place = (name: string, position: THREE.Vector3, scale: THREE.Vector3 | null, rotation: THREE.Quaternion) => {
+          const child = arm.getObjectByName(name); if (!child) return;
+          const rest = armRest.current.get(child)!;
+          child.position.lerpVectors(rest.p, position, armAmount);
+          if (scale) child.scale.lerpVectors(rest.s, scale, armAmount);
+          child.quaternion.slerpQuaternions(rest.q, rotation, armAmount);
+        };
+        k.v.copy(k.upper).multiplyScalar(.5); k.scale.set(.095, k.upper.length() * .5 + .025, .1); place('sleeve', k.v, k.scale, k.q1);
+        k.v.copy(k.elbow).add(k.target).multiplyScalar(.5).sub(arm.position);
+        k.scale.set(.062, k.lower.length() * .5 + .015, .062);
+        place('forearm', k.v, k.scale, k.q2);
+        k.v.copy(k.elbow).addScaledVector(k.lower, .06);
+        k.v.sub(arm.position); place('cuff', k.v, null, k.q2);
+        k.v.copy(k.target).addScaledVector(k.lower, -.20).sub(arm.position); place('left-wrist-watch', k.v, null, k.q2);
+        k.palm.copy(k.q2); k.v.copy(k.target).sub(arm.position); place('hand', k.v, null, k.palm);
+        k.v.set(side * -.048, .015, .045).applyQuaternion(k.palm).add(k.target).sub(arm.position); place('thumb', k.v, null, k.palm);
+      }
+    }
   });
-  const pebble = (key: string, position: [number, number, number], scale: [number, number, number], material: THREE.Material, smooth = false) =>
-    <mesh key={key} geometry={smooth ? round : soft} material={material} position={position} scale={scale} castShadow={!smooth && Math.max(...scale) > .1} />;
+  const pebble = (key: string, position: [number, number, number], scale: [number, number, number], material: THREE.Material, smooth = false, children?: ReactNode) =>
+    <mesh name={key} key={key} geometry={smooth ? round : soft} material={material} position={position} scale={scale} castShadow={!smooth && Math.max(...scale) > .1}>{children}</mesh>;
   return <>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .008, 0]} scale={[1, .72, 1]}>
+    <mesh ref={contactShadow} rotation={[-Math.PI / 2, 0, 0]} position={[0, .008, 0]} scale={[1, .72, 1]}>
       <circleGeometry args={[.43, 24]} /><meshBasicMaterial color="#392c43" transparent opacity={.18} depthWrite={false} />
     </mesh>
     <group ref={root} scale={[1, rose ? 1 : 1.055, 1]}>
       <mesh geometry={rose ? shirt : tuckedShirt} material={materials.outfit} position={[0, rose ? .49 : .59, 0]} scale={[1, 1, rose ? 1 : .85]} castShadow />
       {rose ? <>
-        <mesh geometry={frock} material={materials.outfit} position={[0, .32, 0]} castShadow />
-        <mesh geometry={scarfTail} material={materials.white} position={[0, 0, .265]} />
-        {[-1, 1].map(side => <mesh key={side} geometry={scarf} material={materials.white} scale={[side, 1, 1]} position={[0, 0, .275]} />)}
-        {pebble('scarfBack', [0, .915, -.12], [.145, .035, .065], materials.white)}
+        <mesh ref={skirt} geometry={frock} material={materials.outfit} position={[0, .32, 0]} castShadow />
+        {[-1, 1].map(side => <mesh name="school-scarf-front" key={side} geometry={scarf} material={materials.white} scale={[side, 1, 1]} />)}
+        <mesh name="school-scarf-neck" geometry={scarfBack} material={materials.white} />
       </> : <>
         {pebble('waist', [0, .535, 0], [.215, .07, .178], materials.trousers)}
         <mesh name="trouser-belt" material={materials.belt} position={[0, .595, 0]} scale={[.22, 1, .184]}>
@@ -202,18 +301,22 @@ export default function Chibi({ kissContact, wishEyes, ending, variant, motion, 
         {[-1, 1].map(side => <mesh key={side} geometry={collar} material={materials.outfit} scale={[side, 1, 1]} position={[0, 0, .205]} />)}
       </>}
       {[-1, 1].map(side => <group key={side} name={side < 0 ? 'left-arm' : 'right-arm'} ref={side < 0 ? leftArm : rightArm} position={[side * .245, .86, 0]}>
-        {pebble('sleeve', [side * .035, rose ? -.13 : -.085, 0], [.095, rose ? .17 : .115, .1], materials.outfit)}
-        {pebble('cuff', [side * .04, rose ? -.255 : -.18, .005], [.084, .018, .09], materials.seam)}
-        {!rose && pebble('forearm', [side * .04, -.235, .005], [.062, .088, .062], materials.skin)}
+        {pebble('sleeve', [side * .035, -.085, 0], [.095, .115, .1], materials.outfit, false, side === 1 ? <mesh name="right-sleeve-house-patch" geometry={housePatch} material={materials.house} /> : undefined)}
+        {pebble('cuff', [side * .04, -.18, .005], [.084, .018, .09], materials.seam)}
+        {pebble('forearm', [side * .04, -.235, .005], [.062, .088, .062], materials.skin)}
+        {rose && side === -1 && <group name="left-wrist-watch" position={[-.04, -.27, .008]}><CuteWatch /></group>}
         {pebble('hand', [side * .04, -.31, .015], [.073, .075, .065], materials.skin)}
         {pebble('thumb', [side * -.008, -.295, .06], [.03, .04, .03], materials.skin)}
       </group>)}
-      {[-1, 1].map(side => <group key={side} ref={side < 0 ? leftLeg : rightLeg} position={[side * .13, .49, 0]}>
+      {[-1, 1].map(side => <group name={side < 0 ? 'left-leg' : 'right-leg'} key={side} ref={side < 0 ? leftLeg : rightLeg} position={[side * .13, .49, 0]}>
         {pebble('leg', [0, -.16, 0], [rose ? .098 : .092, .205, .1], rose ? materials.white : materials.trousers)}
-        {pebble('sock', [0, -.29, .005], [.09, .07, .095], rose ? materials.white : materials.trousers)}
-        {pebble('sole', [0, -.445, .06], [.117, .04, .18], materials.sole)}
-        {pebble('shoe', [0, -.395, .06], [.115, .072, .17], materials.white)}
-        {pebble('strap', [0, -.35, .085], [.1, .018, .04], materials.white)}
+        <group ref={side < 0 ? leftKnee : rightKnee} name="knee" position={[0, -.18, 0]}>
+        <mesh name="seated-calf" geometry={soft} material={rose ? materials.white : materials.trousers} position={[0, -.09, 0]} scale={[.09, .13, .095]} visible={false} />
+        {pebble('sock', [0, -.11, .005], [.09, .07, .095], rose ? materials.white : materials.trousers)}
+        {pebble('sole', [0, -.265, .06], [.117, .04, .18], materials.sole)}
+        {pebble('shoe', [0, -.215, .06], [.115, .072, .17], materials.white)}
+        {pebble('strap', [0, -.17, .085], [.1, .018, .04], materials.white)}
+        </group>
       </group>)}
       <group ref={head} position={[0, 1.23, 0]}>
         {pebble('backHair', [0, .06, -.065], [.435, rose ? .47 : .395, .335], materials.hair)}

@@ -1,3 +1,5 @@
+import { COUCH } from '../lib/couch';
+import type { CouchState } from '../lib/couch';
 import { CAKE, cakeCeremonyActive } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import { endingFrozen, endingView, ENDING_PULLBACK_SECONDS } from '../lib/ending';
@@ -13,8 +15,8 @@ import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 import { MUSEUM_BOUNDS, cameraWallDistance, constrainMuseumPosition, museumRoomAt } from '../lib/museumLayout';
 
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { cake: CakeState; ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
-export default function CameraRig({ cake, ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
+interface Props { couch: CouchState; cake: CakeState; ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
+export default function CameraRig({ couch, cake, ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
   const { camera, gl, scene } = useThree();
   const dragPointerId = useRef<number | null>(null);
   const last = useRef({ x: 0, y: 0, distance: 0, interactive: false });
@@ -52,7 +54,7 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
       // A touch starting on a photograph belongs to the photograph, not the orbit.
       const hit = ray.intersectObjects(scene.children, true).find(h => (h.object as THREE.Mesh).isMesh);
       dragPointerId.current = e.pointerId;
-      last.current = { x: e.clientX, y: e.clientY, distance: 0, interactive: Boolean(hit?.object.userData.interactivePhoto || hit?.object.parent?.userData.interactivePhoto) };
+      last.current = { x: e.clientX, y: e.clientY, distance: 0, interactive: Boolean(hit?.object.userData.interactivePhoto || hit?.object.parent?.userData.interactivePhoto || hit?.object.userData.interactiveCouch || hit?.object.parent?.userData.interactiveCouch) };
     };
     const move = (e: PointerEvent) => {
       if (kiss.active || cameraState.inputLocked) { dragPointerId.current = null; return; }
@@ -205,6 +207,14 @@ export default function CameraRig({ cake, ending, onEndingChange, transition, ca
     const perspective = camera as THREE.PerspectiveCamera;
     const nextFov = THREE.MathUtils.damp(perspective.fov, settings.fov, 6, dt);
     if (Math.abs(nextFov - perspective.fov) > .005) { perspective.fov = nextFov; perspective.updateProjectionMatrix(); }
+    if (couch.phase !== 'idle') {
+      const blend = couch.phase === 'seated' ? 1 : couch.phase === 'entering' ? ease(couch.elapsed / COUCH.seconds) : 1 - ease(couch.elapsed / COUCH.seconds);
+      const distance = Math.max(4.2, 3.65 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * perspective.aspect));
+      shotTarget.set(COUCH.x, 1.2, COUCH.seatZ);
+      shot.position.set(COUCH.x + .75, 2.1, COUCH.seatZ - distance); shot.lookAt(shotTarget);
+      if (couch.phase === 'seated') { camera.position.copy(shot.position); camera.quaternion.copy(shot.quaternion); }
+      else { camera.position.lerp(shot.position, blend); camera.quaternion.slerp(shot.quaternion, blend); }
+    }
     if (kiss.active && ending.phase !== 'cake') {
       const t = kiss.elapsed;
       const gifting = kiss.mode === 'bouquet';

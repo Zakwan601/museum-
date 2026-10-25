@@ -1,3 +1,5 @@
+import { COUCH } from '../lib/couch';
+import type { CouchState } from '../lib/couch';
 import LittleUniverse from './LittleUniverse';
 import { CAKE, cakeCeremonyActive } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
@@ -30,6 +32,7 @@ import type { MuseumRoom } from '../lib/museumLayout';
 const EXHIBITS = [...PHOTOS, ...BOOKS];
 
 interface Props {
+  couch: CouchState; onCouchChange: () => void; onCouchStart: () => void;
   ending: EndingState;
   cake: CakeState;
   onCakeChange: () => void;
@@ -52,7 +55,7 @@ interface Props {
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, onCakeKissStart, settings, onRoomChange }: Props) {
+export default function Scene({ couch, onCouchChange, onCouchStart, ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, onCakeKissStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(.88, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
@@ -60,6 +63,19 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
   const futureWelcomePlayed = useRef(false);
   const lastPortalId = useRef<string | null>(null);
   const [activeRoomIndex, setActiveRoomIndex] = useState(0);
+
+  useFrame((_, delta) => {
+    const inRoom = museumRoomAt(charPos.x).id === 'college';
+    if ((!inRoom || transition.active || kiss.active || ending.phase !== 'exploring') && couch.phase !== 'idle') {
+      couch.cancelled = true; couch.phase = 'idle'; couch.elapsed = 0; couch.nearby = false; onCouchChange();
+    }
+    if (couch.phase === 'entering' || couch.phase === 'leaving') {
+      couch.elapsed = Math.min(COUCH.seconds, couch.elapsed + Math.min(delta, .05));
+      if (couch.completed) { couch.phase = couch.phase === 'entering' ? 'seated' : 'idle'; couch.completed = false; onCouchChange(); }
+    }
+    const nearby = inRoom && !transition.active && !kiss.active && ending.phase === 'exploring' && couch.phase === 'idle' && charPos.z < 2.65 && companionPos.z < 2.75 && Math.hypot(charPos.x - COUCH.x, charPos.z - 1.95) < 1.65;
+    if (nearby !== couch.nearby) { couch.nearby = nearby; onCouchChange(); }
+  }, -2.6);
 
   useFrame((_, delta) => {
     transition.cooldown = Math.max(0, transition.cooldown - Math.min(delta, .2));
@@ -202,15 +218,15 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
       {ROOM_PORTALS.filter(portal => portal.from < 3).map(portal => <MagicArchway key={portal.id} portal={portal} transition={transition} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} />)}
       <Gallery settings={settings} charPos={charPos} />
       <Bookshelf charPos={charPos} compact={settings.compact} nearbyId={!kiss.active ? nearbyPhoto?.id ?? null : null} onOpen={book => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(book); }} />
-      <IndoorGalleries compact={settings.compact} activeRoomIndex={activeRoomIndex} reducedMotion={settings.reducedMotion || simpleTransitions} />
+      <IndoorGalleries couch={couch} cameraState={cameraState} onCouchStart={onCouchStart} compact={settings.compact} activeRoomIndex={activeRoomIndex} reducedMotion={settings.reducedMotion || simpleTransitions} />
       {PHOTOS.map((photo) => (
         <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}
       </group>
       {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
-      <Character ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      <Character couch={couch} ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
       {activeRoomIndex === 3 && <HeartConstellation ending={ending} cake={cake} charPos={charPos} companionPos={companionPos} reducedMotion={settings.reducedMotion || simpleTransitions} />}
-      <CameraRig cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
+      <CameraRig couch={couch} cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );
 }
