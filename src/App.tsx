@@ -1,3 +1,4 @@
+import ControlTutorial from './components/ControlTutorial';
 import { createCakeState, cakeControlsReady, cakeUi, startCakeCeremony, blowCakeCandles } from './lib/cake';
 import { createEnding, memoryKey } from './lib/ending';
 import type { EndingPhase } from './lib/ending';
@@ -26,7 +27,7 @@ export default function App() {
   const [entered, setEntered] = useState(false);
   const museumElement = useRef<HTMLDivElement>(null);
   const immersive = useImmersiveMode(museumElement);
-  const finishIntro = useCallback(() => setEntered(true), []);
+  const finishIntro = useCallback(() => { setEntered(true); setShowHint(true); }, []);
   const controls = useMemo(createControlState, []);
   const cameraState = useMemo(createCameraState, []);
   const kiss = useMemo(createKissState, []);
@@ -67,11 +68,6 @@ export default function App() {
     }
     return () => { controls.paused = false; cameraState.inputLocked = false; };
   }, [entered, selectedPhoto, menuOpen, isKissing, isTransitioning, endingLocked, controls, cameraState]);
-  useEffect(() => {
-    if (!showHint) return;
-    const timer = window.setTimeout(() => setShowHint(false), 5000);
-    return () => clearTimeout(timer);
-  }, [showHint]);
   useEffect(() => {
     const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
     window.addEventListener('keydown', close);
@@ -151,10 +147,7 @@ export default function App() {
             <button type="button" className="menu-setting w-full" onClick={replayStory}>{'Replay Our Story \u2728'}</button>
           </>}
         </section>}
-        {showHint && !blocked && <div className="explore-hint" role="status">
-          <span>{settings.compact ? 'Joystick to walk. Drag the room to look.' : 'WASD to walk. Hold and drag to look.'}</span>
-          <button type="button" aria-label="Dismiss instructions" onClick={() => setShowHint(false)}><X size={16} /></button>
-        </div>}
+        {showHint && !blocked && <ControlTutorial controls={controls} cameraState={cameraState} onClose={() => setShowHint(false)} />}
         {nearbyPhoto && !blocked && <button type="button" className={`photo-prompt ${isBook(nearbyPhoto) ? '' : 'vintage-photo-prompt'}`} onClick={() => openPhoto(nearbyPhoto)} aria-label={`View ${isBook(nearbyPhoto) ? 'book' : 'photo'}: ${nearbyPhoto.title}`}>
           <span className="min-w-0"><span className="block truncate text-xs text-rose-100/65" lang={isBook(nearbyPhoto) ? 'bn' : undefined} aria-live="polite">{nearbyPhoto.title}</span><span className="block text-sm">Tap to view {isBook(nearbyPhoto) ? 'book' : 'photo'}</span></span>{isBook(nearbyPhoto) ? <BookOpen size={18} aria-hidden="true" /> : <ArrowUpRight size={18} aria-hidden="true" />}
         </button>}

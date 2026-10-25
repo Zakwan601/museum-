@@ -1,3 +1,4 @@
+import RomanticDetails from './RomanticDetails';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { GALLERY_THEMES } from '../lib/galleryThemes';
@@ -50,8 +51,19 @@ function cushionGeometry() {
   return new THREE.ExtrudeGeometry(s, { depth: .8, bevelEnabled: true, bevelSize: .035, bevelThickness: .035, bevelSegments: 3, curveSegments: 6, steps: 1 });
 }
 const cushion = cushionGeometry();
+const heartShape = new THREE.Shape();
+heartShape.moveTo(0, 1.2);
+heartShape.bezierCurveTo(-.9, 2.6, -2.6, 2.35, -2.6, .85);
+heartShape.bezierCurveTo(-2.6, -.35, -1.1, -1.85, 0, -2.65);
+heartShape.bezierCurveTo(1.1, -1.85, 2.6, -.35, 2.6, .85);
+heartShape.bezierCurveTo(2.6, 2.35, .9, 2.6, 0, 1.2);
+const heartRug = new THREE.ShapeGeometry(heartShape, 32);
+const borderShape = new THREE.Shape(heartShape.getPoints(32));
+borderShape.holes.push(new THREE.Path(heartShape.getPoints(32).map(p => p.multiplyScalar(.977)).reverse()));
+const heartBorder = new THREE.ShapeGeometry(borderShape);
 
-function GalleryInterior({ golden, active, compact }: { golden: boolean; active: boolean; compact: boolean }) {
+
+function GalleryInterior({ golden, active, compact, reducedMotion }: { golden: boolean; active: boolean; compact: boolean; reducedMotion: boolean }) {
   const theme = golden ? GALLERY_THEMES.university : GALLERY_THEMES.college;
   const index = golden ? 2 : 1, center = MUSEUM_ROOMS[index].centerX;
   const bench = MUSEUM_FURNITURE.find(p => p.id === `gallery-bench-${index - 1}`)!;
@@ -76,9 +88,7 @@ function GalleryInterior({ golden, active, compact }: { golden: boolean; active:
       add([x, .55, z], [.1, 1.1, 4.65], theme.panel);
       for (const y of [.12, 1.1, 4.65]) add([x, y, z], [.15, .075, 4.65], theme.trim);
     }
-    // A coffered ceiling and narrow champagne inlays keep this a museum interior.
-    for (const x of [-7, -3.5, 0, 3.5, 7]) add([x, 4.94, 0], [.055, .05, 13.7], theme.gold);
-    for (const z of [-4.5, 0, 4.5]) add([0, 4.94, z], [19.6, .05, .055], theme.gold);
+    // Leave the ceiling open for the soft, hanging fairy-light canopy.
     // The bench matches the collision footprint in museumLayout.
     for (const x of [-1.3, 1.3]) for (const z of [2.85, 3.55]) add([x, .23, z], [.09, .46, .09], theme.gold);
     add([0, .78, 3.64], [3.05, .4, .1], theme.fabric);
@@ -92,7 +102,7 @@ function GalleryInterior({ golden, active, compact }: { golden: boolean; active:
         const a = i * 2.4, r = i ? .19 : 0;
         const px = x + Math.cos(a) * r, pz = -5.0 + Math.sin(a) * r;
         add([px, .84, pz], [.014, .35, .014], '#61715d');
-        blossoms.push({ position: [px, 1.02 + (i % 3) * .045, pz], size: [.105, .07, .095], color: golden ? ['#f1d7ad', '#f3e6d8', '#d8ac8e'][i % 3] : ['#c8bad9', '#eee2df', '#b1b5d2'][i % 3] });
+        blossoms.push({ position: [px, 1.02 + (i % 3) * .045, pz], size: [.105, .07, .095], color: golden ? ['#f4bcaf', '#f9e1cf', '#e4a4a6'][i % 3] : ['#dba5c8', '#f0d5e1', '#c6afd6'][i % 3] });
       }
     }
     return { parts, wood, blossoms };
@@ -105,6 +115,11 @@ function GalleryInterior({ golden, active, compact }: { golden: boolean; active:
   }, []);
   useEffect(() => () => constellations.geometry.dispose(), [constellations]);
   return <group position={[center, 0, 0]} name={golden ? 'golden-gallery' : 'midnight-gallery'}>
+    <RomanticDetails compact={compact} reducedMotion={reducedMotion || !active} wallHeart={false} accentLights={false} palette={golden ? 'peach' : 'lilac'} />
+    <mesh name="romantic-heart-rug" geometry={heartRug} position={[0, .044, -.95]} rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast}>
+      <meshStandardMaterial color={golden ? '#ba7778' : '#895273'} roughness={1} />
+    </mesh>
+    <mesh geometry={heartBorder} position={[0, .046, -.95]} rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast}><meshStandardMaterial color={theme.gold} roughness={.8} /></mesh>
     <Batch parts={decor.wood} />
     <Batch parts={decor.parts} />
     <Batch parts={decor.blossoms} geometry={orb} />
@@ -115,7 +130,7 @@ function GalleryInterior({ golden, active, compact }: { golden: boolean; active:
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .028, 3.2]} scale={[1, .65, 1]} raycast={noRaycast}>
       <circleGeometry args={[2.1, 48]} /><meshStandardMaterial color={golden ? '#c6aa81' : '#354768'} roughness={1} />
     </mesh>
-    <WallWords text={golden ? 'University Life' : 'College Days'} subtitle={golden ? 'THE GOLDEN GALLERY' : 'THE MIDNIGHT GALLERY'} position={[0, 3.85, -6.77]} color={theme.trim} />
+    <WallWords text={golden ? 'University Life' : 'College Days'} subtitle={golden ? 'Side by side, through every season' : 'The little moments that became us'} position={[0, 3.85, -6.77]} color={theme.trim} />
     <WallWords text={golden ? 'Our next chapter' : 'A thousand little moments'} subtitle={golden ? 'Side by side, always' : 'The days that became our story'} position={[0, 3.65, 6.77]} rotation={Math.PI} color={theme.trim} />
     {!golden && <>
       <lineSegments geometry={constellations.geometry} raycast={noRaycast}><lineBasicMaterial color="#b5c3e4" transparent opacity={.32} /></lineSegments>
@@ -129,9 +144,9 @@ function GalleryInterior({ golden, active, compact }: { golden: boolean; active:
   </group>;
 }
 
-export default function IndoorGalleries({ compact, activeRoomIndex }: { compact: boolean; activeRoomIndex: number }) {
+export default function IndoorGalleries({ compact, activeRoomIndex, reducedMotion = false }: { compact: boolean; activeRoomIndex: number; reducedMotion?: boolean }) {
   return <>
-    <GalleryInterior golden={false} active={activeRoomIndex === 1} compact={compact} />
-    <GalleryInterior golden active={activeRoomIndex === 2} compact={compact} />
+    <GalleryInterior golden={false} active={activeRoomIndex === 1} compact={compact} reducedMotion={reducedMotion} />
+    <GalleryInterior golden active={activeRoomIndex === 2} compact={compact} reducedMotion={reducedMotion} />
   </>;
 }

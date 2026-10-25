@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -32,9 +32,10 @@ function Instances({ geometry, material, items }: { geometry: THREE.BufferGeomet
   return <instancedMesh ref={ref} args={[geometry, material, items.length]} raycast={noRaycast} />;
 }
 
-export default function RomanticDetails({ reducedMotion, compact }: { reducedMotion: boolean; compact: boolean }) {
+export default function RomanticDetails({ reducedMotion, compact, wallHeart = true, accentLights = true, palette = 'rose' }: { reducedMotion: boolean; compact: boolean; wallHeart?: boolean; accentLights?: boolean; palette?: 'rose' | 'lilac' | 'peach' }) {
   const flameMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#fff4ce', emissive: '#ffb75d', emissiveIntensity: 2.2, toneMapped: false }), []);
   const details = useMemo(() => {
+    const colors = palette === 'lilac' ? ['#b46b94', '#d49abb', '#e4bfd7', '#f2d7e2', '#c69cce'] : palette === 'peach' ? ['#c77d83', '#e7a191', '#f4c8b2', '#f8dfcc', '#dca0a2'] : ['#a93659', '#c75b7b', '#e293a8', '#f0bac5', '#d57e94'];
     const petals: Placement[] = [], candles: Placement[] = [], bases: Placement[] = [], flames: Placement[] = [], bulbs: Placement[] = [], roses: Placement[] = [];
     const cables: THREE.TubeGeometry[] = [];
     // Deterministic placements stay identical across renders and devices.
@@ -57,7 +58,7 @@ export default function RomanticDetails({ reducedMotion, compact }: { reducedMot
         position: [x, .05 + noise(i + 901) * .006, z],
         scale: [size, .005 + noise(i + 1001) * .005, size * (.4 + noise(i + 1101) * .45)],
         rotation: [(noise(i + 1201) - .5) * .24, noise(i + 1301) * Math.PI * 2, (noise(i + 1401) - .5) * .25],
-        color: ['#a93659', '#c75b7b', '#e293a8', '#f0bac5', '#d57e94'][Math.floor(noise(i + 1501) * 5)],
+        color: colors[Math.floor(noise(i + 1501) * 5)],
       });
     }
     for (const side of [-1, 1]) for (let i = 0; i < 7; i++) {
@@ -90,20 +91,22 @@ export default function RomanticDetails({ reducedMotion, compact }: { reducedMot
       }
     }
     return { petals, candles, bases, flames, bulbs, cables, heart, roses };
-  }, []);
+  }, [palette]);
+  useEffect(() => () => { details.cables.forEach(g => g.dispose()); details.heart.dispose(); }, [details]);
+  useEffect(() => () => flameMaterial.dispose(), [flameMaterial]);
   useFrame(({ clock }) => {
     flameMaterial.emissiveIntensity = reducedMotion ? 2.15 : 2.15 + Math.sin(clock.elapsedTime * 4.3) * .13 + Math.sin(clock.elapsedTime * 7.1) * .08;
   });
   return <group>
     <Instances geometry={petalGeometry} material={petalMaterial} items={details.petals} />
-    <Instances geometry={petalGeometry} material={petalMaterial} items={details.roses} />
+    {wallHeart && <Instances geometry={petalGeometry} material={petalMaterial} items={details.roses} />}
     <Instances geometry={candleGeometry} material={waxMaterial} items={details.candles} />
     <Instances geometry={candleGeometry} material={goldMaterial} items={details.bases} />
     <Instances geometry={flameGeometry} material={flameMaterial} items={details.flames} />
     <Instances geometry={bulbGeometry} material={glowMaterial} items={details.bulbs} />
     {details.cables.map((geometry, i) => <mesh key={i} geometry={geometry} material={goldMaterial} raycast={noRaycast} />)}
-    <mesh geometry={details.heart} material={goldMaterial} raycast={noRaycast} />
-    {!compact && <pointLight position={[-5, .9, -5.8]} color="#ffb282" intensity={2.5} distance={7} decay={2} />}
-    {!compact && <pointLight position={[5, .9, -5.8]} color="#ffc4ad" intensity={2.5} distance={7} decay={2} />}
+    {wallHeart && <mesh geometry={details.heart} material={goldMaterial} raycast={noRaycast} />}
+    {accentLights && !compact && <pointLight position={[-5, .9, -5.8]} color="#ffb282" intensity={2.5} distance={7} decay={2} />}
+    {accentLights && !compact && <pointLight position={[5, .9, -5.8]} color="#ffc4ad" intensity={2.5} distance={7} decay={2} />}
   </group>;
 }

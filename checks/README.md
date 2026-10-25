@@ -155,3 +155,17 @@ Stationary kisses now solve a shared world-space lip contact point using each he
 Cake ceremony positioning now turns both characters toward the cake in place. It retains the clear spot chosen by the player and stops both walking velocities for the entire ceremony. The ceremony browser check verifies unchanged positions in every recorded frame through positioning, lighting, wishing, and blowing.
 
 The cake ceremony camera chooses the bisector of both cake-facing directions once on activation, eases around to that front-side angle, lowers its pitch, and uses a closer 4.4-unit minimum distance with a portrait fit guard. Pair-focused framing blends in smoothly. Existing ceremony checks cover full-body framing at narrow portrait and landscape sizes, stationary characters, and the complete candle sequence; screenshots show both faces and the cake. Normal exploration input resumes afterward.
+
+## Romantic College and University rooms
+
+College Days now uses rose-lilac/plum tones, while University Life uses peach, blush and champagne. Both reuse Room 1's instanced fairy lights, candle clusters and uneven petals, with palette-specific colors, shared heart-rug geometry and soft bench upholstery. The coffered ceiling grid and formal gallery subtitles were removed; photos, labels, floor/wall footprints, benches and archways retain their existing positions and collisions. Wall hearts are omitted here to keep existing photos and wall titles unobstructed. No extra point lights are added. Inactive-room flame animation is held steady; reduced-motion/battery-saver preferences are passed through. Room 1 uses the original RomanticDetails defaults.
+
+`checks/gallery-interiors.mjs` checks the current five interior archways (the final destination is open-air), room previews, desktop/mobile photo prompts/viewers, bench collisions, overflow and runtime errors. A 4x CPU-throttled mobile browser spot check measured 241?248 draw calls / roughly 120k?136k triangles with no context loss at DPR 1; this is an emulation check rather than a physical-phone benchmark.
+
+## First-room control hints
+
+Entering Room 1 shows a plain, noninteractive instruction at the bottom. It uses primary-pointer detection: joystick then swipe on touch, WASD then left-button drag on desktop. Actual movement input advances the hint; actual camera azimuth/pitch input dismisses it. Looking first is remembered, so completed actions are not requested again. No card, buttons, diagrams, timers or forced pauses are used. Progress is stored in a ref, with React updates only on stage changes; the short-lived observation loop cleans up on dismissal/unmount. The existing How to explore menu action reopens the hints.
+
+`checks/control-tutorial.mjs` verifies initial device-specific text, idle/hover exclusion, real joystick/WASD advancement, real scene-drag dismissal, menu reopening, transparent presentation and clear joystick/viewport bounds on narrow portrait and short landscape screens.
+
+Normal companion spacing is now .88 units to the side and .22 behind (about 18% closer), including the initial spawn and tighter arch arrivals. The photo rejoin radius and blocked-side threshold match the closer formation. `checks/closer-formation.mjs` verifies standing, walking and reversing on phone/desktop. Paused cake-reveal frames leave the stationary girl untouched; NPC route clearance and active player cake collisions keep their existing margins.

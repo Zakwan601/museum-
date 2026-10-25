@@ -3,9 +3,9 @@ import fs from 'node:fs';
 const tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();const ws=new WebSocket(tabs.find(p=>p.url==='http://127.0.0.1:5173/').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r));let id=0;const pending=new Map(),errors=[];ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);});const call=(method,params={})=>new Promise(r=>{const n=++id;pending.set(n,r);ws.send(JSON.stringify({id:n,method,params}));});const ev=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true});if(r.result.exceptionDetails)throw Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value;};const wait=ms=>new Promise(r=>setTimeout(r,ms));const click=selector=>ev(`document.querySelector(${JSON.stringify(selector)}).click()`);const setup=()=>ev(`(async()=>{const f=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('@react-three_fiber.js')).name);let root;for(let i=0;i<100&&!(root=f._roots.get(document.querySelector('canvas')));i++)await new Promise(r=>setTimeout(r,100));window.s=root.store.getState();window.T=await import(performance.getEntriesByType('resource').find(r=>r.name.includes('/three.js')).name);window.actors=s.scene.children.filter(o=>o.type==='Group'&&o.children.some(c=>c.type==='Group'&&c.children.some(m=>m.geometry?.type==='LatheGeometry')));})()`);const key=(k,down)=>call('Input.dispatchKeyEvent',{type:down?'keyDown':'keyUp',key:k,code:'Key'+k.toUpperCase()});
 try {
 await call('Runtime.enable');await call('Emulation.setDeviceMetricsOverride',{width:1100,height:800,deviceScaleFactor:1,mobile:false});await call('Page.reload');await wait(700);
-for(let i=0;i<60&&!await ev('!!document.querySelector(".intro-star")');i++)await wait(200);
-await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);await click('.intro-star');await wait(200);await click('.intro-enter');await wait(2000);await call('Emulation.setEmulatedMedia',{features:[]});await setup();
-assert.equal(await ev(`s.scene.getObjectsByProperty('name','arched-door').length`),6);
+for(let i=0;i<150&&!await ev('!!document.querySelector(".intro-star")');i++)await wait(200);
+await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(150);await click('.intro-star');for(let i=0;i<80&&!await ev('!!document.querySelector(".intro-enter")');i++)await wait(100);await click('.intro-enter');await wait(2000);await call('Emulation.setEmulatedMedia',{features:[]});await setup();
+assert.equal(await ev(`s.scene.getObjectsByProperty('name','arched-door').length`),5);
 for(const center of [22,44]) {
 await ev(`actors[0].position.set(${center},0,0);actors[1].position.set(${center+1.05},0,-.35)`);await wait(1000);
 await ev(`s.setFrameloop('never')`);await wait(200);
@@ -25,5 +25,5 @@ await key('s',true);await wait(850);await key('s',false);await wait(250);assert.
 assert.equal(await ev('document.documentElement.scrollWidth>innerWidth'),false);
 console.log('PASS '+(mobile?'mobile':'desktop')+' photo prompts, viewers, furniture collision and no overflow');
 }
-assert.deepEqual(errors,[]);console.log('PASS all six archways and galleries, with no runtime exceptions; previews saved');
+assert.deepEqual(errors,[]);console.log('PASS all five interior archways and galleries, with no runtime exceptions; previews saved');
 }finally{ws.close();}

@@ -54,7 +54,7 @@ interface Props {
 
 export default function Scene({ ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, onCakeKissStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
-  const companionPos = useMemo(() => new THREE.Vector3(1.05, 0, 3.78), []);
+  const companionPos = useMemo(() => new THREE.Vector3(.88, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
   const currentRoomId = useRef('school');
   const futureWelcomePlayed = useRef(false);
@@ -202,7 +202,7 @@ export default function Scene({ ending, cake, onCakeChange, memories, onEndingCh
       {ROOM_PORTALS.filter(portal => portal.from < 3).map(portal => <MagicArchway key={portal.id} portal={portal} transition={transition} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} />)}
       <Gallery settings={settings} charPos={charPos} />
       <Bookshelf charPos={charPos} compact={settings.compact} nearbyId={!kiss.active ? nearbyPhoto?.id ?? null : null} onOpen={book => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(book); }} />
-      <IndoorGalleries compact={settings.compact} activeRoomIndex={activeRoomIndex} />
+      <IndoorGalleries compact={settings.compact} activeRoomIndex={activeRoomIndex} reducedMotion={settings.reducedMotion || simpleTransitions} />
       {PHOTOS.map((photo) => (
         <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}

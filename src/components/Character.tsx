@@ -48,8 +48,8 @@ export default function Character({ ending, cake, transition, controls, cameraSt
     if (lastRelocation.current !== transition.relocation) {
       lastRelocation.current = transition.relocation;
       const direction = transition.direction, x = MUSEUM_ROOMS[transition.to].centerX - direction * (ROOM.width / 2 - 2.8);
-      group.current.position.set(x, 0, direction * .525);
-      companion.current.position.set(x - direction * .35, 0, -direction * .525);
+      group.current.position.set(x, 0, direction * .44);
+      companion.current.position.set(x - direction * .28, 0, -direction * .44);
       heading.current = direction * Math.PI / 2; followSide.current = 1; rejoiningFormation.current = false;
       group.current.rotation.y = companion.current.rotation.y = heading.current;
       velocity.current.set(0, 0, 0); companionVelocity.current.set(0, 0, 0);
@@ -225,7 +225,7 @@ export default function Character({ ending, cake, transition, controls, cameraSt
       }
     };
     clamp(group.current.position);
-    if (atCake) {
+    if (atCake && !controls.paused) {
       // Resolve the two nearby solid objects together. At a tight contact,
       // reject only this input step rather than pushing her through the NPC.
       for (let pass = 0; pass < 5; pass++) {
@@ -251,11 +251,11 @@ export default function Character({ ending, cake, transition, controls, cameraSt
     } else if (motion.current > .1) heading.current = Math.atan2(velocity.current.x, velocity.current.z);
     const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
     group.current.rotation.y += angle(heading.current, group.current.rotation.y) * (1 - Math.exp(-CHARACTER.rotationSpeed * delta));
-    follow.current.set(1.05 * followSide.current, 0, -.35).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(charPos);
+    follow.current.set(.88 * followSide.current, 0, -.22).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(charPos);
     clamp(follow.current);
-    if (follow.current.distanceToSquared(charPos) < .81) {
+    if (follow.current.distanceToSquared(charPos) < .72 ** 2) {
       followSide.current *= -1;
-      follow.current.set(1.05 * followSide.current, 0, -.35).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(charPos);
+      follow.current.set(.88 * followSide.current, 0, -.22).applyAxisAngle(THREE.Object3D.DEFAULT_UP, group.current.rotation.y).add(charPos);
       clamp(follow.current);
     }
     const playerRoom = museumRoomAt(charPos.x), partnerRoom = museumRoomAt(companion.current.position.x);
@@ -292,7 +292,7 @@ export default function Character({ ending, cake, transition, controls, cameraSt
         const currentAngle = Math.atan2(dx, dz);
         const targetAngle = Math.atan2(follow.current.x - charPos.x, follow.current.z - charPos.z);
         const nextAngle = currentAngle + THREE.MathUtils.clamp(angle(targetAngle, currentAngle), -.32, .32);
-        const radius = Math.max(1.12, THREE.MathUtils.lerp(Math.hypot(dx, dz), follow.current.distanceTo(charPos), .25));
+        const radius = Math.max(.92, THREE.MathUtils.lerp(Math.hypot(dx, dz), follow.current.distanceTo(charPos), .25));
         follow.current.set(charPos.x + Math.sin(nextAngle) * radius, 0, charPos.z + Math.cos(nextAngle) * radius);
         clamp(follow.current);
       }
@@ -325,7 +325,7 @@ export default function Character({ ending, cake, transition, controls, cameraSt
   return <>
     <RoseBouquet pose={bouquet} />
     <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[1.05, 0, 3.78]}><Chibi ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 
