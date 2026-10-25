@@ -18,8 +18,9 @@ import { createMomentPath, planMomentPath, sampleMomentPosition, momentFacing } 
 import type { KissState } from '../lib/kiss';
 import { constrainMuseumPosition, museumRoomAt, PASSAGE, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { couch: CouchState; ending: EndingState; cake: CakeState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
-export default function Character({ couch, ending, cake, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
+interface Props {
+  suspended?: boolean; couch: CouchState; ending: EndingState; cake: CakeState; transition: RoomTransitionState; controls: ControlState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; reducedMotion?: boolean }
+export default function Character({ suspended = false, couch, ending, cake, transition, controls, cameraState, charPos, companionPos, kiss, reducedMotion = false }: Props) {
   const group = useRef<THREE.Group>(null), companion = useRef<THREE.Group>(null);
   const couchWasActive = useRef(false), couchResting = useRef(false);
   const girlSit = useRef(createSittingPose()), boySit = useRef(createSittingPose());
@@ -49,6 +50,7 @@ export default function Character({ couch, ending, cake, transition, controls, c
   const saved = useRef({ sequence: 0, player: new THREE.Vector3(), partner: new THREE.Vector3(), playerYaw: 0, partnerYaw: 0, target: new THREE.Vector3() });
   useEffect(() => { charPos.set(0, 0, 4); }, [charPos]);
   useFrame((_, frameDelta) => {
+    if (suspended) return;
     if (!group.current || !companion.current) return;
     const delta = Math.min(frameDelta, .05);
     if (lastRelocation.current !== transition.relocation) {
@@ -127,7 +129,7 @@ export default function Character({ couch, ending, cake, transition, controls, c
           (state.partner.z - state.player.z) * Math.sin(state.playerYaw) < 0 ? -1 : 1;
       }
       const gifting = kiss.mode === 'bouquet';
-      const t = kiss.elapsed, approach = ease(t / 1.8), retreat = gifting ? ease((t - 8.3) / 1.5) : ease((t - 4.6) / 1.6);
+      const t = kiss.elapsed, approach = ease(t / 1.8), retreat = gifting ? 0 : ease((t - 4.6) / 1.6);
       const progress = approach * (1 - retreat);
       const faceYaw = Math.atan2(kiss.axis.x, kiss.axis.z);
       const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
@@ -376,8 +378,8 @@ export default function Character({ couch, ending, cake, transition, controls, c
   }, -1);
   return <>
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi suspended={suspended} sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi suspended={suspended} sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

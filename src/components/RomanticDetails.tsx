@@ -62,6 +62,8 @@ export default function RomanticDetails({ reducedMotion, compact, wallHeart = tr
       });
     }
     for (const side of [-1, 1]) for (let i = 0; i < 7; i++) {
+      // Leave both sides of each arched doorway clear of candle clusters.
+      if (i === 1 || i === 2) continue;
       const x = side * (i < 4 ? 9.48 : 3.7 + (i - 4) * 1.5), z = i < 4 ? -4.5 + i * 3 : -6.5;
       for (let j = 0; j < 3; j++) {
         const height = .19 + j * .13, cx = x + (j - 1) * .14, cz = z + (j % 2) * .17;

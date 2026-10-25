@@ -100,8 +100,8 @@ const housePatch = (() => {
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();return g;
 })();
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { suspended?: boolean; sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ suspended = false, sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const contactTarget = useRef(new THREE.Vector3()), mouthOffset = useRef(new THREE.Vector3());
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
@@ -145,6 +145,7 @@ export default function Chibi({ sitting, kissContact, wishEyes, ending, variant,
     });
   }, [rose]);
   useFrame(({ clock }, delta) => {
+    if (suspended) return;
     if (sitting?.current.holding && lastSit.current === 1) return;
     if (ending && endingFrozen(ending)) { if (eyes.current) eyes.current.scale.y = 1; return; }
     const dt = Math.min(delta, .05), time = clock.elapsedTime + (rose ? 1.3 : 0);

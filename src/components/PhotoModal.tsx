@@ -24,14 +24,14 @@ export default function PhotoModal({ photo, onClose }: Props) {
     return () => { window.removeEventListener('keydown', key); previous?.focus(); };
   }, [onClose]);
   return <div className="photo-modal-backdrop" onClick={onClose}>
-    <div ref={dialog} className={`photo-modal ${book ? 'book-modal' : 'vintage-photo'}`} role="dialog" aria-modal="true" aria-labelledby="photo-title" onClick={e => e.stopPropagation()}>
-      {book ? <header className="photo-modal-header"><div className="min-w-0"><h2 id="photo-title" lang="bn" className="text-lg text-rose-100">{photo.title}</h2><p lang="bn" className="mt-1 text-xs text-rose-100/60">{book.author}</p></div><button ref={close} type="button" className="hud-button" onClick={onClose} aria-label="Close"><X size={22} /></button></header>
-        : <button ref={close} type="button" className="photo-card-close" onClick={onClose} aria-label="Close"><X size={23} /></button>}
+    <div ref={dialog} className={`photo-modal vintage-photo ${book ? 'book-modal' : ''}`} role="dialog" aria-modal="true" aria-labelledby="photo-title" onClick={e => e.stopPropagation()}>
+      <button ref={close} type="button" className="photo-card-close" onClick={onClose} aria-label="Close"><X size={23} /></button>
       <div className="photo-modal-scroll" tabIndex={0} aria-label="Photo and memory">
-        {book ? <>
-          <img src={photo.url} alt={`${book.title} — ${book.author}`} decoding="async" className="photo-modal-image book-cover" />
-          <p className="photo-caption" lang="bn">{photo.caption}</p>
-        </> : <figure className="vintage-print">
+        {book ? <figure className="vintage-print">
+          <h2 id="photo-title" className="sr-only" lang="bn">{book.title}</h2>
+          <img src={photo.url} alt={`${book.title} - ${book.author}`} decoding="async" className="photo-modal-image book-cover" />
+          <figcaption className="vintage-caption"><p className="photo-caption">{photo.caption}</p></figcaption>
+        </figure> : <figure className="vintage-print">
           <img src={photo.url} alt={photo.title} decoding="async" className="photo-modal-image" />
           <figcaption className="vintage-caption">
             <h2 id="photo-title">{photo.title}</h2>

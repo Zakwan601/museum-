@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import CakeDecorations from './CakeDecorations';
 import { CAKE } from '../lib/cake';
 import type { CakeState } from '../lib/cake';
 import { GARDEN_CENTER_X } from '../lib/gardenLayout';
@@ -84,6 +85,7 @@ export default function AnniversaryCake({ cake, reducedMotion = false }: { cake:
     }
   });
   return <group name="anniversary-cake" position={[CAKE.position.x - GARDEN_CENTER_X, .04, CAKE.position.z]} userData={{ cake: true }}>
+    <CakeDecorations cake={cake} reducedMotion={reducedMotion} />
     <mesh name="cake-pedestal" geometry={pedestal} material={palette[0].material} />
     <mesh position={[0, .735, 0]} rotation={[Math.PI / 2, 0, 0]} material={palette[3].material}><torusGeometry args={[.365, .012, 6, 24]} /></mesh>
     <mesh position={[0, .78, 0]} material={palette[3].material}><cylinderGeometry args={[.31, .31, .025, 24]} /></mesh>

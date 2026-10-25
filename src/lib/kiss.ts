@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 export const KISS_DURATION = 8.2;
-export const BOUQUET_DURATION = 10.4;
+// Finish just after the handoff and a short reaction, without a trailing idle hold.
+export const BOUQUET_DURATION = 6.4;
 export interface KissState {
   active: boolean;
   pairDistance: number;

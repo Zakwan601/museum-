@@ -99,10 +99,6 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 @media (max-height: 500px) and (orientation: landscape) { .intro-content { padding-top: 20px; padding-bottom: 18px; } .intro-eyebrow { margin-bottom: 12px; } .intro-star { width: 84px; height: 84px; } .intro-star svg { width: 52px; height: 52px; } .intro-invitation h1, .intro-wishes h1 { font-size: 25px; margin: 8px 0; } .intro-small-star { width: 20px; height: 20px; } .intro-lines { gap: 4px; margin: 12px auto; } .intro-line { font-size: 13px; padding-bottom: 7px; } .intro-enter-slot { margin-top: 12px; min-height: 48px; } .intro-enter { min-height: 44px; padding: 8px 20px; } .intro-footer { margin-top: 14px; } }
 @media (prefers-reduced-motion: reduce) { .intro, .intro * { animation: none !important; transition: none !important; } .intro-line-sparkles { display: none; } }
 [lang=bn] { font-family: "Noto Serif Bengali", "Nirmala UI", serif; }
-.book-modal { width: min(100%, 620px); }
-.book-modal .book-cover { width: auto; max-width: 100%; max-height: min(52dvh, 420px); margin: 4px auto 0; border-radius: 2px; box-shadow: 0 5px 22px #12081566; }
-.book-modal .photo-caption { font-size: 15px; padding-top: 18px; }
-@media (max-height: 500px) and (orientation: landscape) { .book-modal .book-cover { max-height: 65dvh; } }
 .vintage-photo { position: relative; width: min(100%, 650px); border: 0; border-radius: 1px; background: #eee0bd url('/textures/vintage-paper.svg') center / 384px 512px; box-shadow: 0 16px 55px #160b1680; }
 .vintage-photo .photo-modal-scroll { padding: clamp(14px, 3vw, 26px); }
 .vintage-photo .vintage-print { margin: 0; }
@@ -163,3 +159,32 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 .couch-interaction { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(26px, calc(env(safe-area-inset-bottom) + 18px)); pointer-events: auto; }
 .couch-interaction button { min-width: 156px; min-height: 48px; justify-content: center; }
 @media (pointer: coarse) and (orientation: portrait) { .couch-interaction { bottom: max(146px, calc(env(safe-area-inset-bottom) + 138px)); } }
+
+/* Book covers share the memory-card paper, with room for a short personal note. */
+.vintage-photo.book-modal { width: min(100%, 430px); }
+.vintage-photo.book-modal .photo-modal-scroll { padding: 48px 24px 20px; }
+.vintage-photo.book-modal .book-cover { width: auto; max-width: 100%; max-height: min(55dvh, 440px); margin: 0 auto; filter: none; box-shadow: 0 4px 14px #59473624; }
+.vintage-photo.book-modal .vintage-caption { padding: 18px 2px 0; }
+.vintage-photo.book-modal .photo-caption { padding: 0; font-size: 14px; line-height: 1.8; }
+@media (max-height: 500px) and (orientation: landscape) {
+  .vintage-photo.book-modal .photo-modal-scroll { padding-top: 42px; }
+  .vintage-photo.book-modal .book-cover { max-height: 58dvh; }
+}
+
+.secret-letter-prompt { justify-content: center; font-size: 14px; }
+.love-letter { position: relative; display: flex; flex-direction: column; width: min(100%, 590px); max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); background: #f8efdb url('/textures/vintage-paper.svg') center / cover; color: #655040; box-shadow: 0 18px 65px #160b1680; animation: letter-open .35s ease both; }
+.love-letter-scroll { overflow-y: auto; min-height: 0; padding: 35px clamp(22px, 5vw, 46px) 12px; overscroll-behavior: contain; touch-action: pan-y; }
+.love-letter h2 { margin: 6px 0 22px; font: italic 27px Georgia, serif; text-align: center; color: #936e6c; }
+.letter-flourish { text-align: center; color: #b28a7d; font: 25px Georgia, serif; letter-spacing: 12px; opacity: .7; }
+.letter-writing { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: left; white-space: pre-line; font-size: clamp(14px, 2.5vw, 16px); line-height: 1.95; cursor: pointer; min-height: 80px; }
+.letter-caret { color: #b89162; font-size: 13px; padding-left: 4px; }
+.letter-skip { display: block; margin: 14px auto; min-height: 44px; border: 0; background: none; color: #97776a; font-size: 12px; cursor: pointer; }
+.love-letter footer { flex-shrink: 0; text-align: center; padding: 8px 20px 18px; }
+.letter-keep { min-height: 46px; padding: 10px 24px; border: 1px solid #b99b7c70; border-radius: 24px; background: #fff8e780; color: #765647; font-size: 14px; cursor: pointer; }
+.love-letter :focus-visible { outline: 2px solid #b28a7d; outline-offset: 3px; }
+@keyframes letter-open { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (max-height: 500px) { .love-letter-scroll { padding-top: 20px; } .love-letter h2 { margin-bottom: 12px; } .love-letter footer { padding-bottom: 8px; } }
+
+.letter-writing { position: relative; }
+.letter-layout { visibility: hidden; }
+.letter-ink { position: absolute; inset: 0; }

@@ -1,3 +1,4 @@
+import SecretEnvelope from './SecretEnvelope';
 import { COUCH } from '../lib/couch';
 import type { CouchState } from '../lib/couch';
 import LittleUniverse from './LittleUniverse';
@@ -32,6 +33,7 @@ import type { MuseumRoom } from '../lib/museumLayout';
 const EXHIBITS = [...PHOTOS, ...BOOKS];
 
 interface Props {
+  letterOpen: boolean; onLetterNearby: (nearby: boolean) => void; onLetterOpen: () => void;
   couch: CouchState; onCouchChange: () => void; onCouchStart: () => void;
   ending: EndingState;
   cake: CakeState;
@@ -55,7 +57,7 @@ interface Props {
   onRoomChange: (room: MuseumRoom) => void;
 }
 
-export default function Scene({ couch, onCouchChange, onCouchStart, ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, onCakeKissStart, settings, onRoomChange }: Props) {
+export default function Scene({ letterOpen, onLetterNearby, onLetterOpen, couch, onCouchChange, onCouchStart, ending, cake, onCakeChange, memories, onEndingChange, transition, simpleTransitions, onPortalEnter, onTransitionComplete, controls, cameraState, onPhotoClick, nearbyPhoto, onNearbyPhotoChange, kiss, onKissComplete, onBouquetStart, onCakeKissStart, settings, onRoomChange }: Props) {
   const charPos = useMemo(() => new THREE.Vector3(0, 0, 4), []);
   const companionPos = useMemo(() => new THREE.Vector3(.88, 0, 3.78), []);
   const lastNearbyId = useRef<string | null>(null);
@@ -111,10 +113,10 @@ export default function Scene({ couch, onCouchChange, onCouchStart, ending, cake
       if (kiss.mode === 'bouquet' && futureWelcomePlayed.current) {
         // Keep the existing finale available for a later ceremony stage.
         // Step one ends with a player-led approach to the cake.
-        cake.phase = 'revealing'; cake.elapsed = 0; cake.reveal = 0;
+        cake.phase = 'walking'; cake.elapsed = 0; cake.reveal = 0;
         ending.startedAt = performance.now();
-        // Restore a clear three-quarter view before handing control back.
-        cameraState.azimuth = Math.atan2(charPos.x - CAKE.position.x, charPos.z - CAKE.position.z) - .35; cameraState.pitch = .35;
+        // Keep the bouquet's viewing direction when exploration resumes.
+        // The ceremony chooses its face-facing angle only after the wish tap.
         onCakeChange(); onEndingChange('cake');
       }
       if (kiss.mode === 'kiss' && cake.phase === 'kissing') { cake.phase = 'constellation'; cake.elapsed = 0; onCakeChange(); }
@@ -124,12 +126,12 @@ export default function Scene({ couch, onCouchChange, onCouchStart, ending, cake
 
   useFrame((_, delta) => {
     if (ending.phase !== 'cake') return;
-    if (cake.phase === 'revealing') {
+    // Reveal the cake while he walks, without a separate waiting beat.
+    if (cake.phase === 'revealing') { cake.phase = 'walking'; onCakeChange(); }
+    if (cake.phase === 'walking') {
       cake.elapsed = Math.min(CAKE.revealSeconds, cake.elapsed + Math.min(delta, .05));
       cake.reveal = ease(cake.elapsed / CAKE.revealSeconds);
-      if (cake.elapsed === CAKE.revealSeconds) { cake.phase = 'walking'; onCakeChange(); }
-    } else if (cake.phase === 'walking' && cake.npcArrived) {
-      cake.phase = 'inviting'; onCakeChange();
+      if (cake.npcArrived && cake.reveal === 1) { cake.phase = 'inviting'; onCakeChange(); }
     }
     if (cakeCeremonyActive(cake)) {
       cake.elapsed += Math.min(delta, .05);
@@ -218,15 +220,16 @@ export default function Scene({ couch, onCouchChange, onCouchStart, ending, cake
       {ROOM_PORTALS.filter(portal => portal.from < 3).map(portal => <MagicArchway key={portal.id} portal={portal} transition={transition} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} />)}
       <Gallery settings={settings} charPos={charPos} />
       <Bookshelf charPos={charPos} compact={settings.compact} nearbyId={!kiss.active ? nearbyPhoto?.id ?? null : null} onOpen={book => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(book); }} />
+      <SecretEnvelope charPos={charPos} active={activeRoomIndex === 2 && !kiss.active && !transition.active && ending.phase === 'exploring'} cameraState={cameraState} reducedMotion={settings.reducedMotion} onNearby={onLetterNearby} onOpen={onLetterOpen} />
       <IndoorGalleries couch={couch} cameraState={cameraState} onCouchStart={onCouchStart} compact={settings.compact} activeRoomIndex={activeRoomIndex} reducedMotion={settings.reducedMotion || simpleTransitions} />
       {PHOTOS.map((photo) => (
         <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}
       </group>
       {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
-      <Character couch={couch} ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      <Character suspended={letterOpen} couch={couch} ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
       {activeRoomIndex === 3 && <HeartConstellation ending={ending} cake={cake} charPos={charPos} companionPos={companionPos} reducedMotion={settings.reducedMotion || simpleTransitions} />}
-      <CameraRig couch={couch} cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
+      <CameraRig suspended={letterOpen} couch={couch} cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>
   );
 }

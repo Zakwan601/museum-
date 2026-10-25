@@ -60,7 +60,7 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
     let loaded: THREE.Texture | null = null;
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = 'anonymous';
-    const url = new URL(photo.url);
+    const url = new URL(photo.url, window.location.href);
     url.searchParams.set('w', detailed ? '640' : '256');
     url.searchParams.set('h', detailed ? '480' : '192');
     url.searchParams.set('q', '75');

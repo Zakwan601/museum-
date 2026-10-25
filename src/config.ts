@@ -94,24 +94,34 @@ const SCHOOL_PHOTOS: PhotoConfig[] = [
   },
 ];
 
-// Reuse the existing sample images until personal college/university memories are supplied.
+// Each gallery owns its memories. Replace each URL/title/caption/date independently.
+const COLLEGE_MEMORIES = Array.from({ length: 4 }, (_, i) => ({
+  url: `/images/memories/college-${i + 1}.svg`,
+  title: `College Days - Memory ${i + 1}`, caption: 'Your college photo and story will go here.', date: '',
+}));
+const UNIVERSITY_MEMORIES = Array.from({ length: 6 }, (_, i) => ({
+  url: `/images/memories/university-${i + 1}.svg`,
+  title: `University Life - Memory ${i + 1}`, caption: 'Your university photo and story will go here.', date: '',
+}));
 const collegePhotos: PhotoConfig[] = [
   [-4.3, -6.85], [4.3, -6.85], [-4.3, 6.85], [4.3, 6.85],
-].map(([x, z], index) => ({ ...SCHOOL_PHOTOS[index], id: `college-${index}`, roomIndex: 1,
+].map(([x, z], index) => ({ ...COLLEGE_MEMORIES[index], id: `college-${index}`, roomIndex: 1,
   position: [22 + x, 2.2, z], rotation: [0, z > 0 ? Math.PI : 0, 0], lightPosition: [22 + x, 3.5, z > 0 ? 5.5 : -5.5],
 }));
 const universityPhotos: PhotoConfig[] = [
   [-5.4, -6.85], [0, -6.85], [5.4, -6.85], [-4.3, 6.85], [4.3, 6.85],
-].map(([x, z], index) => ({ ...SCHOOL_PHOTOS[index], id: `university-${index}`, roomIndex: 2, scale: index === 1 ? 1.4 : 1.12,
+].map(([x, z], index) => ({ ...UNIVERSITY_MEMORIES[index], id: `university-${index}`, roomIndex: 2, scale: index === 1 ? 1.4 : 1.12,
   position: [44 + x, 2.2, z], rotation: [0, z > 0 ? Math.PI : 0, 0], lightPosition: [44 + x, 3.5, z > 0 ? 5.5 : -5.5],
 }));
-const onwardPortrait: PhotoConfig = { ...SCHOOL_PHOTOS[4], id: 'university-onward', roomIndex: 2, scale: 1.3,
+const onwardPortrait: PhotoConfig = { ...UNIVERSITY_MEMORIES[5], id: 'university-onward', roomIndex: 2, scale: 1.3,
   position: [53.85, 2.2, -4.55], rotation: [0, -Math.PI / 2, 0], lightPosition: [52.5, 3.5, -4.55],
 };
 export const PHOTOS: PhotoConfig[] = [...SCHOOL_PHOTOS, ...collegePhotos, ...universityPhotos, onwardPortrait];
 
 export const MUSIC = {
-  url: '',
-  title: 'Whispers of Time',
+  // Put your MP3 in public/music/, then set e.g. '/music/our-song.mp3'.
+  // An empty URL keeps the existing generated ambient music.
+  url: '/music/our-song.mp3',
+  title: 'Soft Music for Our Memories',
   artist: 'Ambient Memories',
 };

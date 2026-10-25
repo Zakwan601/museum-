@@ -1,3 +1,5 @@
+import { MUSIC } from '../config';
+
 export class AmbientMusic {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -5,6 +7,8 @@ export class AmbientMusic {
   private lfos: OscillatorNode[] = [];
   private _isPlaying = false;
   private softened = false;
+  private audio: HTMLAudioElement | null = null;
+  private request = 0;
 
   get isPlaying(): boolean {
     return this._isPlaying;
@@ -17,6 +21,14 @@ export class AmbientMusic {
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0;
     this.masterGain.connect(this.ctx.destination);
+
+    if (MUSIC.url) {
+      this.audio = new Audio(MUSIC.url);
+      this.audio.preload = 'none';
+      this.audio.loop = true;
+      this.ctx.createMediaElementSource(this.audio).connect(this.masterGain);
+      return;
+    }
 
     const delay = this.ctx.createDelay(2);
     delay.delayTime.value = 0.6;
@@ -59,16 +71,20 @@ export class AmbientMusic {
     });
   }
 
-  play() {
+  async play() {
+    const request = ++this.request;
     this.init();
     if (!this.ctx || !this.masterGain) return;
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
     if (this._isPlaying) return;
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    if (request !== this.request) return;
+    if (this.audio) await this.audio.play();
+    if (request !== this.request) return;
     this._isPlaying = true;
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-    this.masterGain.gain.linearRampToValueAtTime(this.softened ? 0.09 : 0.22, now + 3);
+    this.masterGain.gain.linearRampToValueAtTime(this.softened ? 0.035 : 0.08, now + 3);
   }
 
   pause() {
@@ -86,15 +102,22 @@ export class AmbientMusic {
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-    this.masterGain.gain.linearRampToValueAtTime(softened ? .09 : .22, now + 3);
+    this.masterGain.gain.linearRampToValueAtTime(softened ? .035 : .08, now + 3);
   }
 
-  toggle() {
+  async toggle() {
     if (this._isPlaying) this.pause();
-    else this.play();
+    else await this.play();
   }
 
   dispose() {
+    this.request++;
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.removeAttribute('src');
+      this.audio.load();
+      this.audio = null;
+    }
     this.oscillators.forEach((o) => {
       try {
         o.stop();

@@ -9,14 +9,15 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { ROOM, CAMERA } from '../config';
 import type { CameraState } from '../controls';
-import { ease } from '../lib/kiss';
+import { BOUQUET_DURATION, ease } from '../lib/kiss';
 import type { KissState } from '../lib/kiss';
 import type { ExperienceSettings } from '../hooks/useExperienceSettings';
 import { MUSEUM_BOUNDS, cameraWallDistance, constrainMuseumPosition, museumRoomAt } from '../lib/museumLayout';
 
 import type { RoomTransitionState } from '../lib/roomTransition';
-interface Props { couch: CouchState; cake: CakeState; ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
-export default function CameraRig({ couch, cake, ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
+interface Props {
+  suspended?: boolean; couch: CouchState; cake: CakeState; ending: EndingState; onEndingChange: (phase: EndingPhase) => void; transition: RoomTransitionState; cameraState: CameraState; charPos: THREE.Vector3; companionPos: THREE.Vector3; kiss: KissState; settings: ExperienceSettings }
+export default function CameraRig({ suspended = false, couch, cake, ending, onEndingChange, transition, cameraState, charPos, companionPos, kiss, settings }: Props) {
   const { camera, gl, scene } = useThree();
   const dragPointerId = useRef<number | null>(null);
   const last = useRef({ x: 0, y: 0, distance: 0, interactive: false });
@@ -28,13 +29,14 @@ export default function CameraRig({ couch, cake, ending, onEndingChange, transit
   const orbitDistance = useRef(settings.distance);
   const lastRelocation = useRef(0);
   const finalAspect = useRef(0);
-  const cakeShotStarted = useRef(false), cakeKissFramed = useRef(false);
+  const cakeShotStarted = useRef(false);
   const cakeFocus = useMemo(() => new THREE.Vector3(), []);
   const cakeBlend = useRef(0), cakeLookHeight = useRef(1.05);
   const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
   const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
   const shotTarget = useMemo(() => new THREE.Vector3(), []);
   const shotDistance = useRef(3.4);
+  const bouquetView = useRef({ sequence: -1, azimuth: 0 });
   const pairOffset = useRef(new THREE.Vector3(.47, 0, -.15));
   const smoothOffset = useRef(new THREE.Vector3(0, 3, 4));
 
@@ -92,8 +94,9 @@ export default function CameraRig({ couch, cake, ending, onEndingChange, transit
   }, [camera, cameraState, gl, kiss, ray, scene]);
 
   useFrame((_, frameDelta) => {
+    if (suspended) return;
     const delta = Math.min(frameDelta, .05);
-    if (!cake.acknowledged) { cakeShotStarted.current = false; cakeKissFramed.current = false; }
+    if (!cake.acknowledged) { cakeShotStarted.current = false; }
     if (cakeCeremonyActive(cake) && !cakeShotStarted.current) {
       cakeShotStarted.current = true;
       // Look from the cake side of the pair, where their faces turn inward.
@@ -106,20 +109,14 @@ export default function CameraRig({ couch, cake, ending, onEndingChange, transit
       cameraState.azimuth = smoothAzimuth.current + turn;
       cameraState.pitch = .20;
     }
-    if (cake.phase === 'kissing' && !cakeKissFramed.current) {
-      cakeKissFramed.current = true;
-      const side = Math.atan2(-(companionPos.z - charPos.z), companionPos.x - charPos.x);
-      let turn = THREE.MathUtils.euclideanModulo(side - smoothAzimuth.current + Math.PI, Math.PI * 2) - Math.PI;
-      if (Math.abs(turn) > Math.PI / 2) turn += turn > 0 ? -Math.PI : Math.PI;
-      cameraState.azimuth = smoothAzimuth.current + turn;
-    }
-    const turningSpeed = cakeCeremonyActive(cake) ? 2 : ending.phase === 'cake'  && performance.now() - ending.startedAt < 2400 ? 2.8 : 12;
+    const turningSpeed = cakeCeremonyActive(cake) ? 1.4 : 12;
     smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, turningSpeed, delta);
     smoothPitch.current = THREE.MathUtils.damp(smoothPitch.current, cameraState.pitch, 12, delta);
     cameraState.smoothedAzimuth = smoothAzimuth.current;
   }, -2);
 
   useFrame((_, frameDelta) => {
+    if (suspended) return;
     const perspectiveCamera = camera as THREE.PerspectiveCamera;
     if (ending.phase !== 'exploring') {
       if (perspectiveCamera.far !== 180) { perspectiveCamera.far = 180; perspectiveCamera.updateProjectionMatrix(); }
@@ -218,13 +215,20 @@ export default function CameraRig({ couch, cake, ending, onEndingChange, transit
     if (kiss.active && ending.phase !== 'cake') {
       const t = kiss.elapsed;
       const gifting = kiss.mode === 'bouquet';
-      const blend = ease(t / (gifting ? 1.1 : 1.8)) * (1 - ease((t - (gifting ? 9.4 : 6.2)) / (gifting ? 1 : 2)));
-      // One continuous turn shares the normal view's starting/ending direction.
-      // Spend more of the existing bouquet timeline on the orbit, without
-      // additional entry/exit swings or changing the character animation.
-      const orbit = Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion ? 0 : gifting ? Math.PI * 2 * ease((t - 1.1) / 8.3) : kiss.mode === 'kiss' ? .22 * Math.sin(t * .55) : 0);
+      const blend = ease(t / (gifting ? 1.1 : 1.8)) * (1 - ease((t - (gifting ? BOUQUET_DURATION - 1 : 6.2)) / (gifting ? 1 : 2)));
+      // Settle once beside the pair, then hold throughout the handoff.
+      // Normal controls resume from this same side without a return swing.
+      if (gifting && bouquetView.current.sequence !== kiss.sequence) {
+        const side = Math.atan2(-kiss.axis.z, kiss.axis.x);
+        let turn = THREE.MathUtils.euclideanModulo(side - smoothAzimuth.current + Math.PI, Math.PI * 2) - Math.PI;
+        if (Math.abs(turn) > Math.PI / 2) turn += turn > 0 ? -Math.PI : Math.PI;
+        const azimuth = smoothAzimuth.current + turn;
+        bouquetView.current = { sequence: kiss.sequence, azimuth };
+        cameraState.azimuth = azimuth;
+      }
+      const orbit = gifting ? bouquetView.current.azimuth : Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion || kiss.mode !== 'kiss' ? 0 : .22 * Math.sin(t * .55));
       const aspect = perspective.aspect || 1;
-      // Retain the wider cinematic framing throughout the single bouquet orbit.
+      // Keep the couple and bouquet fully visible without rotating the shot.
       const desiredDistance = gifting
         ? Math.max(4.6, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
         : Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
