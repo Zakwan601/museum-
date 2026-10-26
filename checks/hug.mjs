@@ -16,15 +16,15 @@ for(const [width,height] of [[1200,850],[390,844],[844,390]]) {
  assert.equal(await ev('sceneProps.kiss.mode'),'hug');assert.equal(await ev('sceneProps.controls.paused'),true);
  await click('button[aria-label="Share a hug"]');assert.equal(await ev('sceneProps.kiss.sequence'),sequence+1,'duplicate start blocked');
  await until('sceneProps.kiss.elapsed>2.9');
- assert.deepEqual(await ev('actors.map(a=>a.position.toArray())'),positions,'feet stay at starting positions');
- assert.ok(await ev('actors.every(a=>a.getObjectByName("hug-upper-body").rotation.x>.4)'),'both lean into embrace');
+ assert.ok(await ev('Math.abs(actors[0].position.distanceTo(actors[1].position)-.73)<.01'),'pair steps closer before embracing');
+ assert.ok(await ev('actors.every(a=>a.getObjectByName("hug-upper-body").rotation.x>.35)'),'both lean into embrace');
  const fit=await ev(`(()=>{s.scene.updateMatrixWorld(true);s.camera.updateMatrixWorld();return actors.every(a=>{const v=new T.Vector3();let ok=true;a.traverse(o=>{if(o.isMesh&&o.visible&&o.geometry?.attributes.position){const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld).project(s.camera);if(Math.abs(v.x)>1||Math.abs(v.y)>1)ok=false;}}});return ok})})()`);assert.ok(fit,'both complete hugging characters fit');
  const contact=await ev(`(()=>{s.scene.updateMatrixWorld(true);const out=[];for(let i=0;i<2;i++){const other=actors[1-i],pose=actors[i].getObjectByName('hug-upper-body');for(const side of ['left-arm','right-arm']){const hand=actors[i].getObjectByName(side).getObjectByName('hand').getWorldPosition(new T.Vector3());out.push({gap:Math.hypot(hand.x-other.position.x,hand.z-other.position.z),height:hand.y})}}return out})()`);assert.ok(contact.every(h=>h.gap<.5&&h.height>.55&&h.height<1.1),'all four hands wrap around partner torso');
  const shot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('../hug-'+width+'.png',Buffer.from(shot.result.data,'base64'));
- const az=await ev('sceneProps.cameraState.azimuth');await wait(600);assert.equal(await ev('sceneProps.cameraState.azimuth'),az,'steady hug camera');
+ const az=await ev('sceneProps.cameraState.azimuth');await wait(600);assert.equal(await ev('sceneProps.cameraState.azimuth'),az,'hug orbit preserves user camera heading');
  await until('!sceneProps.kiss.active');await wait(300);assert.equal(await ev('sceneProps.controls.paused||sceneProps.cameraState.inputLocked'),false);
  assert.ok(await ev('actors.every(a=>a.getObjectByName("hug-upper-body").rotation.x===0)'),'body lean resets');
- console.log('PASS hug '+width+'x'+height+' fixed feet, four arm contacts, framing, steady camera and release');
+ console.log('PASS hug '+width+'x'+height+' closer approach, four arm contacts, framing, kiss-style camera and release');
 }
 // Existing kiss still uses the original mouth solver after a hug.
 await click('button[aria-label="Share a kiss"]');await until('sceneProps.kiss.elapsed>2.6');

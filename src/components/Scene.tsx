@@ -15,6 +15,7 @@ import { BOOKS } from '../lib/books';
 import IndoorGalleries from './IndoorGalleries';
 import PhotoFrame from './PhotoFrame';
 import Character from './Character';
+import KissParticles from './KissParticles';
 import HeartConstellation from './HeartConstellation';
 import CameraRig from './CameraRig';
 import { PHOTOS, ROOM } from '../config';
@@ -229,6 +230,7 @@ export default function Scene({ letterOpen, onLetterNearby, onLetterOpen, couch,
       </group>
       {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}
       <Character suspended={letterOpen} couch={couch} ending={ending} cake={cake} transition={transition} controls={controls} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} reducedMotion={settings.reducedMotion} />
+      <KissParticles kiss={kiss} compact={settings.compact} reducedMotion={settings.reducedMotion} suspended={letterOpen} />
       {activeRoomIndex === 3 && <HeartConstellation ending={ending} cake={cake} charPos={charPos} companionPos={companionPos} reducedMotion={settings.reducedMotion || simpleTransitions} />}
       <CameraRig suspended={letterOpen} couch={couch} cake={cake} ending={ending} onEndingChange={onEndingChange} transition={transition} cameraState={cameraState} charPos={charPos} companionPos={companionPos} kiss={kiss} settings={settings} />
     </>

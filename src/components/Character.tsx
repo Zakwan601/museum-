@@ -133,13 +133,20 @@ export default function Character({ suspended = false, couch, ending, cake, tran
           (state.partner.z - state.player.z) * Math.sin(state.playerYaw) < 0 ? -1 : 1;
       }
       const gifting = kiss.mode === 'bouquet';
-      const t = kiss.elapsed, approach = ease(t / 1.8), retreat = gifting ? 0 : ease((t - 4.6) / 1.6);
+      const hugging = kiss.mode === 'hug';
+      const t = kiss.elapsed, approach = ease(t / (hugging ? 1.5 : 1.8)), retreat = gifting ? 0 : hugging ? ease((t - 5.7) / 1.3) : ease((t - 4.6) / 1.6);
       const progress = approach * (1 - retreat);
       const faceYaw = Math.atan2(kiss.axis.x, kiss.axis.z);
       const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
       const pose = (actor: THREE.Group, yaw: number, side: number, targetYaw: number, speed: { current: number }) => {
         const oldX = actor.position.x, oldZ = actor.position.z;
         if (kiss.mode === 'photo') sampleMomentPosition(momentPath.current, progress, side, actor.position);
+        if (hugging) {
+          const start = side < 0 ? state.player : state.partner;
+          const gap = Math.min(.73, state.player.distanceTo(state.partner));
+          state.target.copy(kiss.center).addScaledVector(kiss.axis, side * gap / 2);
+          actor.position.lerpVectors(start, state.target, progress);
+        }
         // Kiss and gift scenes preserve the exact starting foot positions.
         actor.rotation.y = yaw + angle(targetYaw, yaw) * (kiss.mode === 'photo' ? momentFacing(progress) : progress);
         speed.current = Math.hypot(actor.position.x - oldX, actor.position.z - oldZ) / Math.max(delta, .001);
@@ -156,8 +163,8 @@ export default function Character({ suspended = false, couch, ending, cake, tran
       kissPose.current = kiss.mode === 'kiss' ? ease((t - 1.5) / .6) * (1 - ease((t - 4.2) / .5)) : 0;
       photoPose.current = kiss.mode === 'photo' ? ease((t - 1) / .8) * (1 - retreat) : 0;
       if (kiss.mode === 'hug') {
-        const amount = ease((t - 1.4) / 1.2) * (1 - ease((t - 4.5) / 1.2));
-        const gap = state.player.distanceTo(state.partner), lean = hugLean(gap) * amount;
+        const amount = ease((t - 1.6) / 1) * (1 - ease((t - 4.5) / 1.2));
+        const gap = group.current.position.distanceTo(companion.current.position), lean = hugLean(gap) * amount;
         const embrace = (pose: typeof girlHug.current, partner: THREE.Group, partnerScale: number, height: number) => {
           pose.amount = amount; pose.gap = gap;
           for (const side of [-1, 1]) {

@@ -228,12 +228,12 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
         bouquetView.current = { sequence: kiss.sequence, azimuth };
         cameraState.azimuth = azimuth;
       }
-      const orbit = gifting ? bouquetView.current.azimuth : Math.atan2(-kiss.axis.z, kiss.axis.x) + (hugging ? .85 : 0) + (settings.reducedMotion || kiss.mode !== 'kiss' ? 0 : .22 * Math.sin(t * .55));
+      const orbit = gifting ? bouquetView.current.azimuth : Math.atan2(-kiss.axis.z, kiss.axis.x) + (settings.reducedMotion || (kiss.mode !== 'kiss' && !hugging) ? 0 : .22 * Math.sin(t * .55));
       const aspect = perspective.aspect || 1;
       // Keep the couple and bouquet fully visible without rotating the shot.
       const desiredDistance = gifting
         ? Math.max(4.6, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
-        : Math.min(5.4, Math.max(kiss.mode === 'photo' || hugging ? 3.4 : 2.8, 2.2 / aspect));
+        : Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
       shotDistance.current = THREE.MathUtils.damp(shotDistance.current, desiredDistance, 6, dt);
       const distance = shotDistance.current;
       const room = museumRoomAt(kiss.center.x);
