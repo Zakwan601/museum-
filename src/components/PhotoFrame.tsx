@@ -12,8 +12,6 @@ interface Props {
   reducedMotion?: boolean;
 }
 
-const FRAME_W = 1.7;
-const FRAME_H = 1.46;
 const PHOTO_W = 1.46;
 const PHOTO_H = 1.06;
 
@@ -66,7 +64,9 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
     if (url.hostname === 'images.pexels.com') {
       const width = detailed ? 1024 : 512;
       url.searchParams.set('w', String(width));
-      url.searchParams.set('h', String(Math.round(width * PHOTO_H / PHOTO_W)));
+      // Preserve the source proportions rather than requesting a cropped thumbnail.
+      url.searchParams.delete('h');
+      url.searchParams.set('fit', 'max');
       url.searchParams.set('q', detailed ? '85' : '80');
     }
     loader.load(
@@ -77,14 +77,6 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
         tex.minFilter = THREE.LinearMipmapLinearFilter;
         tex.magFilter = THREE.LinearFilter;
         tex.colorSpace = THREE.SRGBColorSpace;
-        // Fill the print window without stretching portrait or panoramic photos.
-        const image = tex.image as HTMLImageElement;
-        const aspect = image.naturalWidth / image.naturalHeight, windowAspect = PHOTO_W / PHOTO_H;
-        if (aspect > windowAspect) {
-          tex.repeat.x = windowAspect / aspect; tex.offset.x = (1 - tex.repeat.x) / 2;
-        } else {
-          tex.repeat.y = aspect / windowAspect; tex.offset.y = (1 - tex.repeat.y) / 2;
-        }
         setTexture(tex);
       },
       undefined,
@@ -125,6 +117,21 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
     if (sharpen !== detailed) setDetailed(sharpen);
   });
 
+  // Give portraits comparable visual weight instead of squeezing them into
+  // a landscape-height slot. Bound tall originals so they still fit the wall.
+  const image = texture?.image as HTMLImageElement | undefined;
+  const aspect = image && image.naturalWidth > 0 && image.naturalHeight > 0
+    ? image.naturalWidth / image.naturalHeight : PHOTO_W / PHOTO_H;
+  const portrait = aspect < 1;
+  const printHeight = portrait
+    ? Math.min(1.85, Math.sqrt(PHOTO_W * PHOTO_H / aspect))
+    : Math.min(PHOTO_H, PHOTO_W / aspect);
+  const printWidth = printHeight * aspect;
+  const sideBorder = portrait ? .085 : .12;
+  const topBorder = portrait ? .075 : .1;
+  const bottomBorder = portrait ? .20 : .3;
+  const printOffset = (bottomBorder - topBorder) / 2;
+
   return (
     <group position={photo.position} rotation={photo.rotation} scale={photo.scale ?? 1} userData={{ interactivePhoto: true }}
       onPointerDown={event => { if (event.pointerType === 'touch') touchStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; }}
@@ -149,11 +156,11 @@ export default function PhotoFrame({ photo, onClick, nearby = false, compact = f
 
       <group rotation={[0, 0, tilt]} userData={{ interactivePhoto: true }}>
         <mesh ref={frameRef} castShadow>
-          <boxGeometry args={[FRAME_W, FRAME_H, .018]} />
+          <boxGeometry args={[printWidth + sideBorder * 2, printHeight + topBorder + bottomBorder, .018]} />
           <meshStandardMaterial map={paper} roughness={.96} metalness={0} emissive="#f0dcb4" emissiveIntensity={.015} />
         </mesh>
-        <mesh position={[0, .1, .012]} userData={{ interactivePhoto: true }} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
-          <planeGeometry args={[PHOTO_W, PHOTO_H]} />
+        <mesh position={[0, printOffset, .012]} userData={{ interactivePhoto: true }} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
+          <planeGeometry args={[printWidth, printHeight]} />
           <meshStandardMaterial map={texture ?? undefined} color={texture ? '#fbf5e8' : '#d4a574'} roughness={.88} onUpdate={material => { material.needsUpdate = true; }} />
         </mesh>
       </group>

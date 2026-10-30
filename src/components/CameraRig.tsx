@@ -1,4 +1,3 @@
-import { FLOWER_DURATION } from '../lib/earFlower';
 import { HUG_DURATION } from '../lib/hug';
 import { COUCH } from '../lib/couch';
 import type { CouchState } from '../lib/couch';
@@ -38,7 +37,6 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
   const shot = useMemo(() => new THREE.PerspectiveCamera(), []);
   const shotTarget = useMemo(() => new THREE.Vector3(), []);
   const shotDistance = useRef(3.4);
-  const flowerView = useRef({ sequence: -1, position: new THREE.Vector3(), rotation: new THREE.Quaternion(), azimuth: 0 });
   const bouquetView = useRef({ sequence: -1, azimuth: 0 });
   const pairOffset = useRef(new THREE.Vector3(.47, 0, -.15));
   const smoothOffset = useRef(new THREE.Vector3(0, 3, 4));
@@ -121,36 +119,8 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
   useFrame((_, frameDelta) => {
     if (suspended) return;
     const perspectiveCamera = camera as THREE.PerspectiveCamera;
-    const flowering = kiss.active && kiss.mode === 'flower';
-    if (flowering && flowerView.current.sequence !== kiss.sequence) {
-      const view = flowerView.current;
-      view.sequence = kiss.sequence;
-      view.position.copy(camera.position); view.rotation.copy(camera.quaternion);
-      const facing = Math.atan2(companionPos.x - charPos.x, companionPos.z - charPos.z);
-      const side = Math.sin(smoothAzimuth.current - facing) < 0 ? -1 : 1;
-      view.azimuth = facing + side * Math.PI / 2;
-    }
     if (ending.phase !== 'exploring') {
       if (perspectiveCamera.far !== 180) { perspectiveCamera.far = 180; perspectiveCamera.updateProjectionMatrix(); }
-    }
-    if (flowering) {
-      // One camera owns this scene. Blend directly from/to the exact saved view,
-      // rather than mixing it with the moving follow camera every frame.
-      const t = kiss.elapsed, aspect = perspectiveCamera.aspect || 1;
-      const room = museumRoomAt(charPos.x);
-      const fov = THREE.MathUtils.damp(perspectiveCamera.fov, settings.fov, 6, Math.min(frameDelta, .05));
-      perspectiveCamera.fov = fov; perspectiveCamera.updateProjectionMatrix();
-      const distance = Math.max(3.2, 1.85 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect));
-      shotTarget.copy(charPos).lerp(companionPos, .43).setY(1.12);
-      shot.position.set(shotTarget.x + Math.sin(flowerView.current.azimuth) * distance, 1.65, shotTarget.z + Math.cos(flowerView.current.azimuth) * distance);
-      shot.position.x = THREE.MathUtils.clamp(shot.position.x, room.centerX - ROOM.width / 2 + CAMERA.wallMargin, room.centerX + ROOM.width / 2 - CAMERA.wallMargin);
-      shot.position.z = THREE.MathUtils.clamp(shot.position.z, MUSEUM_BOUNDS.minZ + CAMERA.wallMargin, MUSEUM_BOUNDS.maxZ - CAMERA.wallMargin);
-      shot.lookAt(shotTarget);
-      const amount = ease(t / 1.3) * (1 - ease((t - FLOWER_DURATION + 1.4) / 1.4));
-      camera.position.lerpVectors(flowerView.current.position, shot.position, amount);
-      camera.quaternion.slerpQuaternions(flowerView.current.rotation, shot.quaternion, amount);
-      anchor.current.copy(charPos);
-      return;
     }
     if (endingFrozen(ending)) {
       // Capture once. After the reveal, no orbit, damping or idle camera work runs.

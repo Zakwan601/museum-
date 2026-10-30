@@ -97,9 +97,9 @@ export default function App() {
   }, []);
 
   const [momentHint, setMomentHint] = useState(false);
-  const startMoment = (mode: 'kiss' | 'photo' | 'bouquet' | 'hug' | 'flower') => {
-    if (couch.phase !== 'idle' || kiss.active || transition.active || (letterOpen && mode !== 'flower') || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet' && !(mode === 'kiss' && cake.phase === 'aligning'))) return false;
-    if (mode !== 'photo' && mode !== 'flower' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
+  const startMoment = (mode: 'kiss' | 'photo' | 'bouquet' | 'hug') => {
+    if (couch.phase !== 'idle' || kiss.active || transition.active || letterOpen || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet' && !(mode === 'kiss' && cake.phase === 'aligning'))) return false;
+    if (mode !== 'photo' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
     setMomentHint(false);
     if (mode === 'bouquet') onEndingChange('bouquet');
     kiss.elapsed = 0; kiss.mode = mode; kiss.returning = false;
@@ -146,10 +146,7 @@ export default function App() {
     acknowledge();
     setLetterOpen(true);
   };
-  const closeLetter = () => {
-    setLetterOpen(false);
-    if (!kiss.flowerReceived) startMoment('flower');
-  };
+  const closeLetter = useCallback(() => setLetterOpen(false), []);
   const blocked = letterOpen || Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || endingLocked || sitting;
   return (
     <div ref={museumElement} data-ending-complete={endingPhase === 'complete'} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
@@ -199,7 +196,6 @@ export default function App() {
         </div>}
         {isKissing && !isPosing && <div className="cinema-bars" aria-hidden="true" />}
         {momentHint && !isKissing && !inEnding && !menuOpen && !selectedPhoto && <p className="cake-invitation" role="status">Move a little closer to each other first. </p>}
-        {isKissing && kiss.mode === 'flower' && <p className="bouquet-caption flower-caption" role="status">A little flower for my cute baby </p>}
         {isGivingBouquet && <p className="bouquet-caption" role="status">For all our tomorrows.</p>}
         {exploringCake && !selectedPhoto && !menuOpen && <>
           {cakeState.phase === 'inviting' && !cakeState.nearby && !showHint && <p className="cake-invitation" role="status">Edike ashooo buri..</p>}

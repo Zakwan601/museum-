@@ -1,5 +1,3 @@
-import EarFlower from './EarFlower';
-import type { EarFlowerPose, FlowerReach } from '../lib/earFlower';
 import { hugLean } from '../lib/hug';
 import type { HugPose } from '../lib/hug';
 import CuteWatch from './CuteWatch';
@@ -102,13 +100,13 @@ const housePatch = (() => {
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();return g;
 })();
 const smile = strand([[-.065, 0, 0], [0, -.025, .005], [.065, 0, 0]], .009);
-interface Props { flowerReach?: MutableRefObject<FlowerReach>; earFlower?: MutableRefObject<EarFlowerPose>; hug?: MutableRefObject<HugPose>; suspended?: boolean; sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
-export default function Chibi({ flowerReach, earFlower, hug, suspended = false, sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
+interface Props { hug?: MutableRefObject<HugPose>; suspended?: boolean; sitting?: MutableRefObject<SittingPose>; kissContact?: MutableRefObject<THREE.Vector3>; wishEyes?: MutableRefObject<number>; ending?: EndingState; variant: 'lavender' | 'rose'; motion: MutableRefObject<number>; giftGrip?: MutableRefObject<GiftGrip>; kissPose?: MutableRefObject<number>; kissHands?: MutableRefObject<[THREE.Vector3, THREE.Vector3]>; photoPose?: MutableRefObject<number>; reducedMotion?: boolean; poseSide?: -1 | 1 }
+export default function Chibi({ hug, suspended = false, sitting, kissContact, wishEyes, ending, variant, motion, giftGrip, kissPose, kissHands, photoPose, reducedMotion = false, poseSide = variant === 'rose' ? 1 : -1 }: Props) {
   const rose = variant === 'rose';
   const contactTarget = useRef(new THREE.Vector3()), mouthOffset = useRef(new THREE.Vector3());
   const root = useRef<THREE.Group>(null), head = useRef<THREE.Group>(null), eyes = useRef<THREE.Group>(null);
   const chest = useRef<THREE.Group>(null), shirtMesh = useRef<THREE.Mesh>(null);
-  const lastHug = useRef(0), lastFlowerReach = useRef(0);
+  const lastHug = useRef(0);
   const leftArm = useRef<THREE.Group>(null), rightArm = useRef<THREE.Group>(null);
   const leftKnee = useRef<THREE.Group>(null), rightKnee = useRef<THREE.Group>(null);
   const skirt = useRef<THREE.Mesh>(null), contactShadow = useRef<THREE.Mesh>(null);
@@ -155,9 +153,7 @@ export default function Chibi({ flowerReach, earFlower, hug, suspended = false, 
     const dt = Math.min(delta, .05), time = clock.elapsedTime + (rose ? 1.3 : 0);
     const hugging = hug?.current.amount ?? 0, previousHug = lastHug.current;
     lastHug.current = hugging;
-    const reaching = flowerReach?.current.amount ?? 0, previousReach = lastFlowerReach.current;
-    lastFlowerReach.current = reaching;
-    const lean = hugLean(hug?.current.gap ?? 1) * hugging + reaching * .55;
+    const lean = hugLean(hug?.current.gap ?? 1) * hugging;
     if (chest.current) chest.current.rotation.x = lean;
     if (shirtMesh.current) {
       const base = rose ? 0 : .1;
@@ -203,19 +199,6 @@ export default function Chibi({ flowerReach, earFlower, hug, suspended = false, 
         head.current.position.lerp(contactTarget.current, affection);
       }
     }
-    if (earFlower && head.current) {
-      head.current.position.z += earFlower.current.amount * .12;
-      head.current.position.y -= earFlower.current.amount * .035;
-      head.current.rotation.z += earFlower.current.amount * .12 * earFlower.current.side;
-      head.current.updateWorldMatrix(true, false);
-      earFlower.current.anchor.set(earFlower.current.side * .36, .005, .23);
-      head.current.localToWorld(earFlower.current.anchor);
-      head.current.getWorldQuaternion(earFlower.current.anchorRotation);
-    }
-    if (reaching > 0 && head.current) {
-      head.current.position.set(0, .49 + .74 * Math.cos(lean), .20 * Math.sin(lean));
-      head.current.rotation.x = lean * .25;
-    }
     if (hugging > 0 && head.current) {
       head.current.position.set(.4 * hugging, .49 + .74 * Math.cos(lean), .74 * Math.sin(lean));
       head.current.rotation.set(lean * .45, -.12 * hugging, -.08 * hugging);
@@ -244,7 +227,7 @@ export default function Chibi({ flowerReach, earFlower, hug, suspended = false, 
       const amount = giftGrip.current.amount;
       for (const side of [-1, 1]) {
         const arm = side < 0 ? leftArm.current : rightArm.current;
-        if (!arm || (giftGrip.current.side && giftGrip.current.side !== side)) continue;
+        if (!arm) continue;
         grip.target.copy(giftGrip.current.hands[side < 0 ? 0 : 1]); root.current.worldToLocal(grip.target);
         grip.direction.copy(grip.target).sub(arm.position);
         const reach = Math.sqrt(Math.max(.01, grip.direction.lengthSq() - .04 ** 2 - .015 ** 2)) / .31;
@@ -269,26 +252,19 @@ export default function Chibi({ flowerReach, earFlower, hug, suspended = false, 
       if (head.current) { head.current.rotation.set(0, 0, 0); head.current.position.set(0, 1.23, 0); }
       if (eyes.current) eyes.current.scale.y = 1;
     }
-    if ((seated > 0 || previousSeat > 0 || hugging > 0 || previousHug > 0 || reaching > 0 || previousReach > 0) && root.current) {
+    if ((seated > 0 || previousSeat > 0 || hugging > 0 || previousHug > 0) && root.current) {
       const k = seatScratch;
       root.current.updateWorldMatrix(true, false);
-      const baseAmount = hugging > 0 ? hugging : THREE.MathUtils.smoothstep(seated, .55, 1);
+      const armAmount = hugging > 0 ? hugging : THREE.MathUtils.smoothstep(seated, .55, 1);
       for (const [side, arm] of [[-1, leftArm.current], [1, rightArm.current]] as const) {
         if (!arm) continue;
         arm.children.forEach(child => {
           if (!armRest.current.has(child)) armRest.current.set(child, { p: child.position.clone(), s: child.scale.clone(), q: child.quaternion.clone() });
           const r = armRest.current.get(child)!; child.position.copy(r.p); child.scale.copy(r.s); child.quaternion.copy(r.q);
         });
-        const flowerArm = Boolean(flowerReach && side === flowerReach.current.side && reaching > 0);
-        const armAmount = flowerArm ? reaching : baseAmount;
-        if (!armAmount || (!sitting && !hug && !flowerArm)) continue;
+        if (!armAmount || (!sitting && !hug)) continue;
         arm.quaternion.slerp(k.identity, armAmount);
-        if (flowerArm && flowerReach) {
-          k.target.copy(flowerReach.current.target);
-          arm.parent!.updateWorldMatrix(true, false); arm.parent!.worldToLocal(k.target);
-          k.dir.copy(k.target).sub(arm.position).clampLength(0, .435);
-          k.target.copy(arm.position).add(k.dir);
-        } else if (hugging > 0 && hug) {
+        if (hugging > 0 && hug) {
           k.target.copy(hug.current.hands[side < 0 ? 0 : 1]);
           arm.parent!.updateWorldMatrix(true, false); arm.parent!.worldToLocal(k.target);
         } else if (sitting) {
@@ -297,10 +273,10 @@ export default function Chibi({ flowerReach, earFlower, hug, suspended = false, 
           if (!inner) k.target.set(side * .26, .57, .20);
         }
         k.dir.copy(k.target).sub(arm.position); const distance = k.dir.length(); k.dir.normalize();
-        if (flowerArm || hugging > 0) k.bend.set(side, -.2, -.25);
+        if (hugging > 0) k.bend.set(side, -.2, 0);
         else k.bend.copy(k.down);
         k.bend.addScaledVector(k.dir, -k.bend.dot(k.dir)).normalize();
-        const length = flowerArm ? .22 : Math.max(.195, distance * (hugging > 0 ? .56 : .51)), height = Math.sqrt(Math.max(0, length * length - distance * distance / 4));
+        const length = Math.max(.195, distance * (hugging > 0 ? .56 : .51)), height = Math.sqrt(Math.max(0, length * length - distance * distance / 4));
         k.elbow.copy(arm.position).addScaledVector(k.dir, distance / 2).addScaledVector(k.bend, height);
         k.upper.copy(k.elbow).sub(arm.position); k.lower.copy(k.target).sub(k.elbow);
         k.q1.setFromUnitVectors(k.down, k.upper.clone().normalize()); k.q2.setFromUnitVectors(k.down, k.lower.clone().normalize());
@@ -366,7 +342,6 @@ export default function Chibi({ flowerReach, earFlower, hug, suspended = false, 
         </group>
       </group>)}
       <group ref={head} position={[0, 1.23, 0]}>
-        {earFlower && <EarFlower pose={earFlower} attached />}
         {pebble('backHair', [0, .06, -.065], [.435, rose ? .47 : .395, .335], materials.hair)}
         {rose && [-1, 1].map(side => pebble(`bob${side}`, [side * .33, -.16, -.07], [.13, .29, .235], materials.hair))}
         {pebble('face', [0, 0, .035], [.389, .345, .31], materials.skin)}

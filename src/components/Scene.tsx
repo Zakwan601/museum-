@@ -1,4 +1,3 @@
-import { FLOWER_DURATION } from '../lib/earFlower';
 import { HUG_DURATION } from '../lib/hug';
 import SecretEnvelope from './SecretEnvelope';
 import { COUCH } from '../lib/couch';
@@ -108,7 +107,7 @@ export default function Scene({ letterOpen, onLetterNearby, onLetterOpen, couch,
   useFrame((_, delta) => {
     if (!kiss.active) return;
     if (kiss.mode === 'photo' && kiss.returning && kiss.elapsed >= 2.4 && kiss.elapsed < 4.6) kiss.elapsed = 4.6;
-    const duration = kiss.mode === 'flower' ? FLOWER_DURATION : kiss.mode === 'bouquet' ? BOUQUET_DURATION : kiss.mode === 'hug' ? HUG_DURATION : KISS_DURATION;
+    const duration = kiss.mode === 'bouquet' ? BOUQUET_DURATION : kiss.mode === 'hug' ? HUG_DURATION : KISS_DURATION;
     const limit = kiss.mode === 'photo' && !kiss.returning ? 2.4 : duration;
     kiss.elapsed = Math.min(limit, kiss.elapsed + Math.min(delta, .05));
     if (kiss.elapsed >= duration) {

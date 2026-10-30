@@ -19,12 +19,12 @@ const titles = [
 ];
 // Replace these short personal notes independently when your own lines are ready.
 export const BOOK_NOTES: Record<string, string> = {
-  'moyurakkhi': 'Some stories feel like the beginning of a beautiful memory. This one will always have a little place in ours.',
-  'himu': 'A few pages, a quiet afternoon, and thoughts of you. A little memory to keep between these pages.',
-  'ebong-himu': 'For the stories we talked about long after the last page. Our own little note will live here soon.',
-  'nilpodmo': 'A small reminder of the books that brought us closer. There is a personal story waiting to be written here.',
-  'ditio-prohor': 'Some books stay with us like a favourite conversation. This space is waiting for one of ours.',
-  'rupali-ratri': 'For quiet evenings, favourite pages, and memories of us. A few words from our story will go here.',
+  'moyurakkhi': 'তোমাকে দেখার পর থেকেই আমার সমস্ত পথ যেন তোমার দিকেই চলে গেছে।',
+  'himu': 'পৃথিবীতে কিছু মানুষ থাকে, যাদের কাছে না গিয়েও সারাক্ষণ তাদের কাছেই থাকা যায়।',
+  'ebong-himu': 'তুমি হয়তো জানো না, কারো কারো অপেক্ষার নামই ভালোবাসা।',
+  'nilpodmo': 'তোমাকে দেওয়ার মতো নীল পদ্ম নেই, আছে শুধু এক আকাশভরা অভিমান আর ভালোবাসা।',
+  'ditio-prohor': 'রাত যত গভীর হয়, কিছু মানুষের কথা তত বেশি মনে পড়ে।',
+  'rupali-ratri': 'জোছনার রাতে তোমার কথা মনে পড়লে, চাঁদকেও বড্ড একা মনে হয়।',
 };
 export const BOOKS: BookConfig[] = titles.map(([id, title, extension, source], i) => {
   const x = (i % 3 - 1) * 1.18, y = i < 3 ? 2.39 : 1.22;
