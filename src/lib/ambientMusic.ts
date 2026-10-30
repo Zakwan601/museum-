@@ -1,5 +1,7 @@
 import { MUSIC } from '../config';
 
+const MUSIC_LEVEL = .045, SOFT_LEVEL = .018;
+
 export class AmbientMusic {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -76,15 +78,17 @@ export class AmbientMusic {
     this.init();
     if (!this.ctx || !this.masterGain) return;
     if (this._isPlaying) return;
-    if (this.ctx.state === 'suspended') await this.ctx.resume();
-    if (request !== this.request) return;
-    if (this.audio) await this.audio.play();
+    // Start both operations within the original tap for mobile autoplay rules.
+    await Promise.all([
+      this.ctx.state === 'suspended' ? this.ctx.resume() : Promise.resolve(),
+      this.audio ? this.audio.play() : Promise.resolve(),
+    ]);
     if (request !== this.request) return;
     this._isPlaying = true;
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-    this.masterGain.gain.linearRampToValueAtTime(this.softened ? 0.035 : 0.08, now + 3);
+    this.masterGain.gain.linearRampToValueAtTime(this.softened ? SOFT_LEVEL : MUSIC_LEVEL, now + 3);
   }
 
   pause() {
@@ -102,7 +106,7 @@ export class AmbientMusic {
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
     this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-    this.masterGain.gain.linearRampToValueAtTime(softened ? .035 : .08, now + 3);
+    this.masterGain.gain.linearRampToValueAtTime(softened ? SOFT_LEVEL : MUSIC_LEVEL, now + 3);
   }
 
   async toggle() {

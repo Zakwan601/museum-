@@ -58,6 +58,7 @@ export default function App() {
   const settings = useMemo(() => ({
     ...viewport,
     distance: viewport.phone && !viewport.portrait && immersive.fullscreen ? 4.0 : viewport.distance,
+    dpr: viewport.phone && immersive.fullscreen ? 1.5 : viewport.dpr,
     reducedMotion: viewport.reducedMotion || lessMotion,
   }), [viewport, lessMotion, immersive.fullscreen]);
   const [isKissing, setIsKissing] = useState(false);
@@ -156,7 +157,6 @@ export default function App() {
           </button>
           <span className="museum-location" role="status"><span className="room-progress">{currentRoom.index + 1} / {MUSEUM_ROOMS.length}</span><span>{currentRoom.name}</span></span>
         </div>
-        <div className={`museum-music ${inEnding ? 'ending-music' : ''}`}><MusicPlayer key={story} softened={endingPhase === 'cake' || endingPhase === 'pullback' || endingPhase === 'complete'} /></div>
         {menuOpen && <section id="museum-menu" className="museum-menu" aria-label="Museum settings">
           <h1 className="text-lg text-rose-100">A little world of us</h1>
           <ol className="room-route" aria-label="Museum rooms">{MUSEUM_ROOMS.map(room => <li key={room.id} aria-current={room.id === currentRoom.id ? 'step' : undefined}>{room.index + 1}. {room.name}</li>)}</ol>
@@ -210,6 +210,7 @@ export default function App() {
       {letterOpen && <LoveLetter onClose={closeLetter} reducedMotion={settings.reducedMotion} />}
       {selectedPhoto && <PhotoModal key={selectedPhoto.id} photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />}
       </>}
+      <div className={`museum-music story-music ${!entered ? 'intro-music' : inEnding ? 'ending-music' : ''}`}><MusicPlayer key={story} softened={endingPhase === 'cake' || endingPhase === 'pullback' || endingPhase === 'complete'} /></div>
       {entered && <ImmersiveMode mode={immersive} enabled={settings.compact} modalOpen={letterOpen || Boolean(selectedPhoto)} hideEntry={inEnding || menuOpen || isKissing || isTransitioning || showHint} hideMessage={inEnding || isTransitioning || isKissing} />}
     </div>
   );

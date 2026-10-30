@@ -210,3 +210,16 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 .letter-writing { position: relative; }
 .letter-layout { visibility: hidden; }
 .letter-ink { position: absolute; inset: 0; }
+
+/* Decorative 2D sparkles belong only to the opening star invitation. */
+.intro-star-stage { position: relative; display: inline-grid; place-items: center; width: 132px; height: 132px; isolation: isolate; }
+.intro-glints { position: absolute; left: 50%; top: 50%; width: 240px; height: 200px; transform: translate(-50%, -50%); overflow: visible; pointer-events: none; user-select: none; }
+.intro-glint { opacity: .25; transform-box: fill-box; transform-origin: center; animation: introGlint var(--glint-duration) ease-in-out var(--glint-delay) infinite; filter: drop-shadow(0 0 3px #ffe2a377); }
+.intro-glints.is-still .intro-glint { animation: none; opacity: .55; }
+@keyframes introGlint { 0%, 100% { opacity: .12; transform: scale(.45) rotate(-12deg); } 50% { opacity: .95; transform: scale(1.05) rotate(12deg); } }
+@media (max-height: 500px) and (orientation: landscape) { .intro-star-stage { width: 84px; height: 84px; } .intro-glints { width: 160px; height: 134px; } }
+@media (prefers-reduced-motion: reduce) { .intro-glint { animation: none; opacity: .55; } }
+
+/* One persistent music player spans the intro, museum and ending. */
+.story-music { z-index: 20; --edge-right: max(14px, env(safe-area-inset-right)); --edge-top: max(12px, env(safe-area-inset-top)); --edge-bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px)); }
+.story-music.intro-music { z-index: 101; }

@@ -1,5 +1,6 @@
+import IntroSparkles from './IntroSparkles';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 const wishes = [
   'I love you.',
@@ -28,7 +29,10 @@ export default function Intro({ onEnter, onEnterRequest, reducedMotion }: { onEn
     <div className="intro-stars" aria-hidden="true">{Array.from({ length: 38 }, (_, i) => <i key={i} style={{ left: `${(i * 37.7 + 9) % 100}%`, top: `${(i * 23.3 + 7) % 100}%`, animationDelay: `${i % 7 * .6}s`, width: i % 3 ? 2 : 3, height: i % 3 ? 2 : 3 }} />)}</div>
     <div className="intro-content">
       {!started ? <div className="intro-invitation">
+        <div className="intro-star-stage">
+          <IntroSparkles reducedMotion={reducedMotion} />
         <button type="button" className="intro-star" onClick={() => setStarted(true)} aria-label="Tap the glowing star to begin"><Star size={76} strokeWidth={1} fill="currentColor" /></button>
+        </div>
         <h1>Happy 7 year Anniversary Motuuuu <br />My sweetest baby girl</h1>
         <h3>Tap the star to begin</h3>
       </div> : <section className="intro-wishes" aria-labelledby="intro-title">
