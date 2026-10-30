@@ -1,3 +1,5 @@
+import EarFlower from './EarFlower';
+import { createEarFlower, createFlowerReach } from '../lib/earFlower';
 import { createHugPose, hugLean } from '../lib/hug';
 import FootstepSparkles from './FootstepSparkles';
 import { COUCH, createSittingPose } from '../lib/couch';
@@ -16,7 +18,7 @@ import Chibi from './Chibi';
 import RoseBouquet from './RoseBouquet';
 import { createBouquetPose, createGiftGrip } from '../lib/bouquet';
 import { ease } from '../lib/kiss';
-import { createMomentPath, planMomentPath, sampleMomentPosition, momentFacing } from '../lib/momentPath';
+import { createMomentPath, planMomentPath, sampleMomentPosition } from '../lib/momentPath';
 import type { KissState } from '../lib/kiss';
 import { constrainMuseumPosition, museumRoomAt, PASSAGE, MUSEUM_ROOMS } from '../lib/museumLayout';
 import type { RoomTransitionState } from '../lib/roomTransition';
@@ -39,9 +41,10 @@ export default function Character({ suspended = false, couch, ending, cake, tran
   const kissContact = useRef(new THREE.Vector3());
   const alignmentWaypoint = useRef(new THREE.Vector3());
   const wishEyes = useRef(0);
-  const momentPath = useRef(createMomentPath());
   const kissHands = useRef<[THREE.Vector3, THREE.Vector3]>([new THREE.Vector3(), new THREE.Vector3()]);
   const photoPose = useRef(0);
+  const earFlower = useRef(createEarFlower());
+  const flowerReach = useRef(createFlowerReach());
   const bouquet = useRef(createBouquetPose());
   const receiver = useRef(createGiftGrip()), giver = useRef(createGiftGrip());
   const giftScratch = useRef({ boy: new THREE.Vector3(), girl: new THREE.Vector3(), middle: new THREE.Vector3(), right: new THREE.Vector3(), rotation: new THREE.Quaternion() });
@@ -109,46 +112,50 @@ export default function Character({ suspended = false, couch, ending, cake, tran
     girlHug.current.amount = boyHug.current.amount = 0;
     kiss.pairDistance = group.current.position.distanceTo(companion.current.position);
     if (endingFrozen(ending)) return;
-    receiver.current.amount = giver.current.amount = 0; bouquet.current.visible = false;
+    receiver.current.amount = giver.current.amount = 0; giver.current.side = undefined; bouquet.current.visible = false;
+    flowerReach.current.amount = 0;
+    earFlower.current.attached = kiss.flowerReceived; earFlower.current.amount = 0; earFlower.current.visible = false;
     if (kiss.active) {
       const state = saved.current;
       if (state.sequence !== kiss.sequence) {
         state.sequence = kiss.sequence;
-        rejoiningFormation.current = kiss.mode === 'photo';
+        rejoiningFormation.current = false;
         state.player.copy(group.current.position); state.partner.copy(companion.current.position);
         state.playerYaw = group.current.rotation.y; state.partnerYaw = companion.current.rotation.y;
         kiss.center.copy(state.player).add(state.partner).multiplyScalar(.5);
-        const photo = kiss.mode === 'photo';
-        const room = museumRoomAt(state.player.x);
-        if (photo) {
-        kiss.center.x = room.centerX + THREE.MathUtils.clamp(kiss.center.x - room.centerX, photo ? -3.5 : -7, photo ? 3.5 : 7);
-        kiss.center.z = THREE.MathUtils.clamp(kiss.center.z, photo ? -1 : -4, photo ? 1 : 4);
+        kiss.axis.copy(state.partner).sub(state.player).setY(0).normalize();
+        if (kiss.mode === 'photo') {
+          // Keep their existing places and choose the front nearest the camera.
+          const front = Math.atan2(-kiss.axis.z, kiss.axis.x);
+          if (Math.cos(front - cameraState.smoothedAzimuth) < 0) kiss.axis.negate();
         }
-        if (photo) kiss.axis.set(Math.cos(cameraState.smoothedAzimuth), 0, -Math.sin(cameraState.smoothedAzimuth));
-        else kiss.axis.copy(state.partner).sub(state.player).setY(0).normalize();
-        planMomentPath(momentPath.current, state.player, state.partner, kiss.center, kiss.axis, photo ? 1 : kiss.mode === 'bouquet' ? .94 : .73);
+        if (kiss.mode === 'flower') {
+          const facing = Math.atan2(kiss.axis.x, kiss.axis.z);
+          earFlower.current.side = Math.sin(cameraState.smoothedAzimuth - facing) < 0 ? -1 : 1;
+          kiss.flowerAzimuth = facing + earFlower.current.side * 1.2;
+        }
         // Resume following on the partner's original side after the return,
         // rather than immediately cutting across the player to a fixed side.
         followSide.current = (state.partner.x - state.player.x) * Math.cos(state.playerYaw) -
           (state.partner.z - state.player.z) * Math.sin(state.playerYaw) < 0 ? -1 : 1;
       }
       const gifting = kiss.mode === 'bouquet';
+      const flowering = kiss.mode === 'flower';
       const hugging = kiss.mode === 'hug';
-      const t = kiss.elapsed, approach = ease(t / (hugging ? 1.5 : 1.8)), retreat = gifting ? 0 : hugging ? ease((t - 5.7) / 1.3) : ease((t - 4.6) / 1.6);
+      const t = kiss.elapsed, approach = ease(t / (hugging ? 1.5 : 1.8)), retreat = gifting ? 0 : hugging ? ease((t - 5.7) / 1.3) : ease((t - (flowering ? 5.2 : 4.6)) / (flowering ? 1.4 : 1.6));
       const progress = approach * (1 - retreat);
       const faceYaw = Math.atan2(kiss.axis.x, kiss.axis.z);
       const angle = (a: number, b: number) => THREE.MathUtils.euclideanModulo(a - b + Math.PI, Math.PI * 2) - Math.PI;
       const pose = (actor: THREE.Group, yaw: number, side: number, targetYaw: number, speed: { current: number }) => {
         const oldX = actor.position.x, oldZ = actor.position.z;
-        if (kiss.mode === 'photo') sampleMomentPosition(momentPath.current, progress, side, actor.position);
         if (hugging) {
           const start = side < 0 ? state.player : state.partner;
           const gap = Math.min(.73, state.player.distanceTo(state.partner));
           state.target.copy(kiss.center).addScaledVector(kiss.axis, side * gap / 2);
           actor.position.lerpVectors(start, state.target, progress);
         }
-        // Kiss and gift scenes preserve the exact starting foot positions.
-        actor.rotation.y = yaw + angle(targetYaw, yaw) * (kiss.mode === 'photo' ? momentFacing(progress) : progress);
+        // Photo, kiss and gift scenes preserve the exact starting foot positions.
+        actor.rotation.y = yaw + angle(targetYaw, yaw) * progress;
         speed.current = Math.hypot(actor.position.x - oldX, actor.position.z - oldZ) / Math.max(delta, .001);
       };
       const photoYaw = Math.atan2(-kiss.axis.z, kiss.axis.x);
@@ -175,6 +182,19 @@ export default function Character({ suspended = false, couch, ending, cake, tran
         };
         embrace(girlHug.current, companion.current, 1.055, .76);
         embrace(boyHug.current, group.current, 1, .88);
+      }
+      if (flowering) {
+        const flower = earFlower.current;
+        const reach = ease((t - 1.4) / 2.2), release = ease((t - 4.1) / 1.1);
+        flower.amount = ease((t - 1) / 1.2) * (1 - ease((t - 4.8) / 1.4));
+        flower.position.set(-flower.side * .22, .78, .25).applyAxisAngle(THREE.Object3D.DEFAULT_UP, companion.current.rotation.y).add(companion.current.position);
+        flower.position.lerp(flower.anchor, reach);
+        flower.position.y += Math.sin(Math.PI * reach) * .1;
+        flower.rotation.copy(flower.anchorRotation); flower.visible = t >= 1.4;
+        if (t >= 3.6) kiss.flowerReceived = flower.attached = true;
+        flowerReach.current.side = -flower.side as -1 | 1;
+        flowerReach.current.amount = ease((t - 1.2) / .8) * (1 - release);
+        flowerReach.current.target.copy(flower.position); flowerReach.current.target.y -= .055;
       }
       if (gifting) {
         const scratch = giftScratch.current, offer = ease((t - 2) / 1.4), accept = ease((t - 4) / 1.6);
@@ -404,8 +424,9 @@ export default function Character({ suspended = false, couch, ending, cake, tran
   return <>
     <FootstepSparkles position={charPos} motion={motion} enabled={!suspended && !reducedMotion && !controls.paused && !kiss.active && !endingFrozen(ending) && couch.phase === 'idle'} />
     <RoseBouquet pose={bouquet} />
-    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi hug={girlHug} suspended={suspended} sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
-    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi hug={boyHug} suspended={suspended} sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <EarFlower pose={earFlower} />
+    <group ref={group} name="player-girl" position={[0, 0, 4]}><Chibi earFlower={earFlower} hug={girlHug} suspended={suspended} sitting={girlSit} ending={ending} variant="rose" wishEyes={wishEyes} giftGrip={receiver} poseSide={-1} motion={motion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
+    <group ref={companion} name="companion-boy" position={[.88, 0, 3.78]}><Chibi flowerReach={flowerReach} hug={boyHug} suspended={suspended} sitting={boySit} ending={ending} variant="lavender" wishEyes={wishEyes} giftGrip={giver} poseSide={1} motion={companionMotion} kissContact={kissContact} kissPose={kissPose} kissHands={kissHands} photoPose={photoPose} reducedMotion={reducedMotion} /></group>
   </>;
 }
 

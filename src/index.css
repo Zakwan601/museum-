@@ -223,3 +223,21 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 /* One persistent music player spans the intro, museum and ending. */
 .story-music { z-index: 20; --edge-right: max(14px, env(safe-area-inset-right)); --edge-top: max(12px, env(safe-area-inset-top)); --edge-bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px)); }
 .story-music.intro-music { z-index: 101; }
+
+/* Small feedback effects use only opacity and transforms. */
+.museum-loading { position:absolute; inset:0; z-index:50; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#21152b; color:#fff0d5; }
+.museum-loading span { font-size:48px; animation:loading-star 1.5s ease-in-out infinite; }
+.museum-loading p { font-size:13px; margin-top:14px; }
+@keyframes loading-star { 50% { opacity:.4; transform:scale(.88) rotate(15deg); } }
+.interaction-glow { position:absolute; inset:0; z-index:150; pointer-events:none; box-shadow:inset 0 0 45px #ffddb655; animation:interaction-glow .6s ease-out both; }
+@keyframes interaction-glow { from { opacity:1; } to { opacity:0; } }
+.photo-captured { position:absolute; inset:0; z-index:45; pointer-events:none; animation:shutter-flash .45s ease-out both; }
+.photo-captured span { position:absolute; left:50%; top:18%; transform:translateX(-50%); color:#fff3dc; font-size:14px; white-space:nowrap; animation:capture-label 2.5s both; }
+@keyframes shutter-flash { from { background:#fff6e533; } to { background:transparent; } }
+@keyframes capture-label { 0% { opacity:0; } 15%,70% { opacity:1; } 100% { opacity:0; } }
+.photo-captured.quiet { animation:none; }
+@media (prefers-reduced-motion:reduce) { .museum-loading span { animation:none; } .interaction-glow, .photo-captured { animation:none; box-shadow:none; } }
+
+.interaction-glow.quiet { animation:none; box-shadow:none; }
+
+.flower-caption { animation-delay:.35s; }

@@ -1,3 +1,6 @@
+import { readPreference, savePreference } from './lib/preferences';
+import SceneReady from './components/SceneReady';
+import PhotoShutter from './components/PhotoShutter';
 import LoveLetter from './components/LoveLetter';
 import { createCouchState, couchUi, startCouch, leaveCouch } from './lib/couch';
 import ControlTutorial from './components/ControlTutorial';
@@ -26,6 +29,11 @@ import Intro from './components/Intro';
 import { useImmersiveMode } from './hooks/useImmersiveMode';
 
 export default function App() {
+  const [sceneReady, setSceneReady] = useState(false);
+  const markSceneReady = useCallback(() => setSceneReady(true), []);
+  const [feedback, setFeedback] = useState(0);
+  const [haptics, setHaptics] = useState(() => readPreference('museum-haptics', false));
+  const acknowledge = () => { setFeedback(value => value + 1); if (haptics && navigator.vibrate && matchMedia('(pointer: coarse)').matches) navigator.vibrate(12); };
   const [entered, setEntered] = useState(false);
   const museumElement = useRef<HTMLDivElement>(null);
   const immersive = useImmersiveMode(museumElement);
@@ -89,9 +97,9 @@ export default function App() {
   }, []);
 
   const [momentHint, setMomentHint] = useState(false);
-  const startMoment = (mode: 'kiss' | 'photo' | 'bouquet' | 'hug') => {
-    if (couch.phase !== 'idle' || kiss.active || transition.active || letterOpen || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet' && !(mode === 'kiss' && cake.phase === 'aligning'))) return false;
-    if (mode !== 'photo' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
+  const startMoment = (mode: 'kiss' | 'photo' | 'bouquet' | 'hug' | 'flower') => {
+    if (couch.phase !== 'idle' || kiss.active || transition.active || (letterOpen && mode !== 'flower') || selectedPhoto || menuOpen || (inEnding && mode !== 'bouquet' && !(mode === 'kiss' && cake.phase === 'aligning'))) return false;
+    if (mode !== 'photo' && mode !== 'flower' && kiss.pairDistance > 1.3) { setMomentHint(true); return false; }
     setMomentHint(false);
     if (mode === 'bouquet') onEndingChange('bouquet');
     kiss.elapsed = 0; kiss.mode = mode; kiss.returning = false;
@@ -117,10 +125,12 @@ export default function App() {
   const openPhoto = (photo: PhotoConfig) => {
     if (letterOpen) return;
     if (!isBook(photo)) setMemories(previous => previous.some(p => memoryKey(p) === memoryKey(photo)) ? previous : [...previous, photo]);
+    acknowledge();
     setSelectedPhoto(photo);
   };
   const replayStory = () => {
     // The fullscreen host stays mounted; only the experience is reset.
+    setSceneReady(false); setFeedback(0);
     setLetterOpen(false); setNearbyLetter(false);
     setMomentHint(false); setEntered(false); setSelectedPhoto(null); setNearbyPhoto(null); setMemories([]);
     setMenuOpen(false); setShowHint(false); setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); setIsTransitioning(false);
@@ -133,9 +143,13 @@ export default function App() {
     if (!nearbyLetter || letterOpen || selectedPhoto || menuOpen || kiss.active || transition.active || inEnding || sitting) return;
     controls.paused = true; cameraState.inputLocked = true;
     controls.keyboardX = controls.keyboardY = controls.joystickX = controls.joystickY = 0;
+    acknowledge();
     setLetterOpen(true);
   };
-  const closeLetter = useCallback(() => setLetterOpen(false), []);
+  const closeLetter = () => {
+    setLetterOpen(false);
+    if (!kiss.flowerReceived) startMoment('flower');
+  };
   const blocked = letterOpen || Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || endingLocked || sitting;
   return (
     <div ref={museumElement} data-ending-complete={endingPhase === 'complete'} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
@@ -147,9 +161,12 @@ export default function App() {
         gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
         dpr={[1, batterySaver ? 1 : settings.dpr]}
       >
+        <SceneReady onReady={markSceneReady} />
         <fog attach="fog" args={['#382234', 16, 32]} />
         <Scene letterOpen={letterOpen} onLetterNearby={setNearbyLetter} onLetterOpen={openLetter} couch={couch} onCouchChange={onCouchChange} onCouchStart={sitTogether} ending={ending} cake={cake} onCakeChange={onCakeChange} memories={memories} onEndingChange={onEndingChange} transition={transition} simpleTransitions={batterySaver} onPortalEnter={enterPortal} onTransitionComplete={() => setIsTransitioning(false)} controls={controls} cameraState={cameraState} onPhotoClick={openPhoto} nearbyPhoto={nearbyPhoto} onNearbyPhotoChange={setNearbyPhoto} kiss={kiss} onBouquetStart={() => startMoment('bouquet')} onCakeKissStart={() => startMoment('kiss')} onKissComplete={() => { setIsKissing(false); setIsGivingBouquet(false); setIsPosing(false); setPoseReturning(false); }} settings={settings} onRoomChange={setCurrentRoom} />
       </Canvas>
+      {!sceneReady && <div className="museum-loading" role="status"><p>Preparing our little world...</p></div>}
+      {isPosing && <PhotoShutter key={kiss.sequence} reducedMotion={settings.reducedMotion} haptics={haptics} />}
       <div className="museum-hud">
         <div className={`museum-top-left ${inEnding && !exploringCake ? 'ending-hidden' : ''}`}>
           <button type="button" className="hud-button" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close museum menu' : 'Open museum menu'} aria-expanded={menuOpen} aria-controls="museum-menu" disabled={isKissing || isTransitioning}>
@@ -162,6 +179,7 @@ export default function App() {
           <ol className="room-route" aria-label="Museum rooms">{MUSEUM_ROOMS.map(room => <li key={room.id} aria-current={room.id === currentRoom.id ? 'step' : undefined}>{room.index + 1}. {room.name}</li>)}</ol>
           <label className="menu-setting"><span>Battery saver</span><input type="checkbox" checked={batterySaver} onChange={e => setBatterySaver(e.target.checked)} /></label>
           <label className="menu-setting"><span>Reduce motion</span><input type="checkbox" checked={settings.reducedMotion} disabled={viewport.reducedMotion} onChange={e => setLessMotion(e.target.checked)} /></label>
+          {settings.compact && <label className="menu-setting"><span>Gentle vibration</span><input type="checkbox" checked={haptics} onChange={e => { setHaptics(e.target.checked); savePreference('museum-haptics', e.target.checked); }} /></label>}
           {exploringCake && <>
             {memories.length > 0 && <details className="cake-memories"><summary>Collected memories ({memories.length})</summary>{memories.map(photo => <button type="button" className="menu-setting w-full" key={photo.id} onClick={() => { setMenuOpen(false); openPhoto(photo); }}>View {photo.title}</button>)}</details>}
             <button type="button" className="menu-setting w-full" onClick={replayStory}>{'Replay Our Story'}</button>
@@ -181,6 +199,7 @@ export default function App() {
         </div>}
         {isKissing && !isPosing && <div className="cinema-bars" aria-hidden="true" />}
         {momentHint && !isKissing && !inEnding && !menuOpen && !selectedPhoto && <p className="cake-invitation" role="status">Move a little closer to each other first. </p>}
+        {isKissing && kiss.mode === 'flower' && <p className="bouquet-caption flower-caption" role="status">A little flower for my cute baby </p>}
         {isGivingBouquet && <p className="bouquet-caption" role="status">For all our tomorrows.</p>}
         {exploringCake && !selectedPhoto && !menuOpen && <>
           {cakeState.phase === 'inviting' && !cakeState.nearby && !showHint && <p className="cake-invitation" role="status">Edike ashooo buri..</p>}
@@ -207,6 +226,7 @@ export default function App() {
         <button type="button" onClick={replayStory}>{'Replay Our Story'}</button>
         {memories.length > 0 && <div className="ending-memory-access" aria-label="Collected memories">{memories.map(photo => <button className="sr-only focus:not-sr-only" key={photo.id} onClick={() => openPhoto(photo)}>View memory: {photo.title}</button>)}</div>}
       </section>}
+      {feedback > 0 && <div key={`feedback-${feedback}`} className={`interaction-glow ${settings.reducedMotion ? 'quiet' : ''}`} aria-hidden="true" />}
       {letterOpen && <LoveLetter onClose={closeLetter} reducedMotion={settings.reducedMotion} />}
       {selectedPhoto && <PhotoModal key={selectedPhoto.id} photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />}
       </>}
