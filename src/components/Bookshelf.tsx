@@ -71,6 +71,6 @@ export default function Bookshelf({ charPos, nearbyId, onOpen, compact }: { char
     </group>
     {[1.78, 2.96].map(y => <mesh key={y} position={[0, y, .13]} raycast={noRaycast}><boxGeometry args={[3.7, .025, .08]} /><meshStandardMaterial color="#ffe2aa" emissive="#ffcc87" emissiveIntensity={.9} /></mesh>)}
     {BOOKS.map((book, i) => <ShelfBook key={book.id} book={book} index={i} nearby={nearbyId === book.id} loadCover={loadCovers} onOpen={onOpen} />)}
-    {close && <pointLight position={[0, 2.1, 1.15]} color="#ffd39b" intensity={compact ? .8 : 1.3} distance={5} decay={2} />}
+    <pointLight position={[0, 2.1, 1.15]} color="#ffd39b" intensity={close ? compact ? .8 : 1.3 : 0} distance={5} decay={2} />
   </group>;
 }

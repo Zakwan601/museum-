@@ -1,3 +1,4 @@
+import { Heart } from 'lucide-react';
 import { useCallback, useEffect, useRef } from 'react';
 import type { ControlState } from '../controls';
 interface Props { controls: ControlState; disabled?: boolean }
@@ -39,6 +40,6 @@ export default function VirtualJoystick({ controls, disabled = false }: Props) {
       center.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, radius: rect.width * .32 };
       pointer.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); e.currentTarget.dataset.active = 'true'; move(e);
     }} onPointerMove={move} onPointerUp={e => { if (pointer.current === e.pointerId) reset(); }} onPointerCancel={reset} onLostPointerCapture={reset}>
-    <div className="joystick-ring" /><div ref={knob} className="joystick-knob" />
+    <div className="joystick-ring" /><div ref={knob} className="joystick-knob"><Heart className="joystick-heart" size={18} strokeWidth={1.4} fill="currentColor" aria-hidden="true" /></div>
   </div>;
 }

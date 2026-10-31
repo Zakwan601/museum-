@@ -225,7 +225,7 @@ export default function Scene({ letterOpen, onLetterNearby, onLetterOpen, couch,
       <SecretEnvelope charPos={charPos} active={activeRoomIndex === 2 && !kiss.active && !transition.active && ending.phase === 'exploring'} cameraState={cameraState} reducedMotion={settings.reducedMotion} onNearby={onLetterNearby} onOpen={onLetterOpen} />
       <IndoorGalleries couch={couch} cameraState={cameraState} onCouchStart={onCouchStart} compact={settings.compact} activeRoomIndex={activeRoomIndex} reducedMotion={settings.reducedMotion || simpleTransitions} />
       {PHOTOS.map((photo) => (
-        <PhotoFrame key={photo.id} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
+        <PhotoFrame key={photo.id} active={activeRoomIndex !== 3 && (photo.roomIndex ?? 0) === activeRoomIndex} photo={photo} compact={settings.compact} reducedMotion={settings.reducedMotion} nearby={!kiss.active && nearbyPhoto?.id === photo.id} onClick={() => { if (!kiss.active && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onPhotoClick(photo); }} />
       ))}
       </group>
       {activeRoomIndex === 3 && <LittleUniverse ending={ending} cake={cake} memories={memories} compact={settings.compact} reducedMotion={settings.reducedMotion} simple={simpleTransitions} onPhotoClick={onPhotoClick} />}

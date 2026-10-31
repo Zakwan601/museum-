@@ -1,11 +1,4 @@
 export const LOVE_LETTER_POSITION: [number, number, number] = [44, .924, 3.2];
-export const LOVE_LETTER_TEXT = `My favorite person,
+export const LOVE_LETTER_TEXT = `Janish motu, ekta doa ache Islam e, quoting " O Allah, if [this person] is good for me in my religion, my livelihood, and my akhirah (hereafter), bring them close to me" .Eta ami ekdom recently jansi.
 
-Some of my favorite memories are the little moments that might seem ordinary to everyone else, but mean everything to me because they have you in them.
-
-If I could choose again, I'd still want to meet you, know you, and make all these memories with you.
-
-And no matter how many new chapters life gives us, I hope we always find our way back to each other.
-
-With all my love,
-Forever your person \u2764\ufe0f`;
+But mojar bishoy ki janish, jokhon amra kebol friend chilam, ig e shudhu kotha hoto, shamna shamni to jetam e na lojjay, tokhon ek bikale asr er namajer por masjid e ami hubohu same ei doa tai e korsilam.. janish kar nam niye!! Afra r nam niye, amar motu ke niye.. And from then I have you by my side in every situation.. hehe, amar kache jinish ta eto eto bhalo lage.. propose tumi korleo, chaichi ami tomake aro age, bhujcho amar ragi bou, i loved you theseeee much, I love you sooo much and I will love you not till my last breath but also when I am no more.`;

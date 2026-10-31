@@ -9,7 +9,7 @@ import { createEnding, memoryKey } from './lib/ending';
 import type { EndingPhase } from './lib/ending';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Camera, Heart, HeartHandshake, Menu, X } from 'lucide-react';
+import { Camera, HeartHandshake, Menu, X } from 'lucide-react';
 import * as THREE from 'three';
 import Scene from './components/Scene';
 import VirtualJoystick from './components/VirtualJoystick';
@@ -126,6 +126,7 @@ export default function App() {
     if (letterOpen) return;
     if (!isBook(photo)) setMemories(previous => previous.some(p => memoryKey(p) === memoryKey(photo)) ? previous : [...previous, photo]);
     acknowledge();
+    setShowHint(false);
     setSelectedPhoto(photo);
   };
   const replayStory = () => {
@@ -182,8 +183,8 @@ export default function App() {
             <button type="button" className="menu-setting w-full" onClick={replayStory}>{'Replay Our Story'}</button>
           </>}
         </section>}
-        {showHint && !nearbyLetter && !blocked && !couchState.nearby && <ControlTutorial controls={controls} cameraState={cameraState} onClose={() => setShowHint(false)} />}
-        {nearbyLetter && !blocked && <button type="button" className="photo-prompt vintage-photo-prompt secret-letter-prompt" onClick={openLetter}>A Little Secret {'\uD83D\uDC8C'}</button>}
+        {showHint && !nearbyLetter && !blocked && !couchState.nearby && <ControlTutorial nearPhoto={Boolean(nearbyPhoto)} controls={controls} cameraState={cameraState} onClose={() => setShowHint(false)} />}
+        {nearbyLetter && !blocked && <button type="button" className="photo-prompt vintage-photo-prompt secret-letter-prompt" onClick={openLetter}>A Little Secret </button>}
         {nearbyPhoto && !nearbyLetter && !blocked && <button type="button" className={`photo-prompt ${isBook(nearbyPhoto) ? '' : 'vintage-photo-prompt'}`} onClick={() => openPhoto(nearbyPhoto)} aria-label={`View ${isBook(nearbyPhoto) ? 'book' : 'photo'}: ${nearbyPhoto.title}`}>
           <span className="min-w-0"><span className="block truncate text-xs text-rose-100/65" lang={isBook(nearbyPhoto) ? 'bn' : undefined} aria-live="polite">{nearbyPhoto.title}</span><span className="block text-sm">Tap to view </span></span>
         </button>}
@@ -191,7 +192,7 @@ export default function App() {
           {isPosing ? <button type="button" className="hud-button return-button" onClick={finishPhotoPose} disabled={poseReturning} aria-label="Return to walking">{poseReturning ? 'Returning…' : 'Back to walking'}</button> : <>
             <button type="button" className="hud-button" onClick={() => startMoment('photo')} disabled={isKissing} aria-label="Pose together for a photo" title="Pose together"><Camera size={21} /><span className="action-label">Futooo</span></button>
             <button type="button" className="hud-button" onClick={() => startMoment('hug')} disabled={isKissing} aria-label="Share a hug" title="Hug"><HeartHandshake size={21} /><span className="action-label">Hug {'\u2661'}</span></button>
-            <button type="button" className="hud-button" onClick={() => startMoment('kiss')} disabled={isKissing} aria-label="Share a kiss" title="Share a kiss"><Heart size={21} /><span className="action-label">{isKissing ? 'A moment for us…' : 'Kiss'}</span></button>
+            <button type="button" className="hud-button" onClick={() => startMoment('kiss')} disabled={isKissing} aria-label="Share a kiss" title="Share a kiss"><span aria-hidden="true" style={{ fontSize: 21, lineHeight: 1 }}>{'\uD83D\uDC8B'}</span><span className="action-label">{isKissing ? 'A moment for us…' : 'Kiss'}</span></button>
           </>}
         </div>}
         {isKissing && !isPosing && <div className="cinema-bars" aria-hidden="true" />}
@@ -218,7 +219,7 @@ export default function App() {
       </div>
       {endingPhase === 'complete' && <section className="ending-message" aria-labelledby="ending-title" aria-live="polite">
         <h1 id="ending-title">Happy 7 year Anniversary<br />My sweetest baby girl</h1>
-        <p>Of all the stars, I&#8217;m glad I found you.<br />Here&#8217;s to our little memories, and a lifetime of making more, together.</p>
+        <p>Ami just chai amader jate joldi joldi biye hoye jay<br />Tarpor ami ar amar motu eto eto ghurbo, sharadin eto eto kiss korbo hehe, I will try my best to keep you happy my baby girl.</p>
         <button type="button" onClick={replayStory}>{'Replay Our Story'}</button>
         {memories.length > 0 && <div className="ending-memory-access" aria-label="Collected memories">{memories.map(photo => <button className="sr-only focus:not-sr-only" key={photo.id} onClick={() => openPhoto(photo)}>View memory: {photo.title}</button>)}</div>}
       </section>}

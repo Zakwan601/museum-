@@ -275,7 +275,6 @@ export const PHOTOS: PhotoConfig[] = [...SCHOOL_PHOTOS, ...COLLEGE_PHOTOS, ...UN
 
 export const MUSIC = {
   // Put your MP3 in public/music/, then set e.g. '/music/our-song.mp3'.
-  // An empty URL keeps the existing generated ambient music.
   url: '/music/our-song.mp3',
   title: 'Soft Music for Our Memories',
   artist: 'Ambient Memories',
