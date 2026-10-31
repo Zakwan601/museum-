@@ -20,9 +20,8 @@ export const ENDING_PULLBACK_SECONDS = 6;
 export const ENDING_AZIMUTH = Math.PI / 2 - .25;
 export function endingView(aspect: number, center: THREE.Vector3, azimuth = ENDING_AZIMUTH) {
   const fov = 48;
-  // Fit the island, rather than the old wide constellation. Narrow phones need
-  // horizontal breathing room; desktop and landscape keep an intimate distance.
-  const distance = Math.max(10.2, 6.4 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect));
+  // Keep the couple prominent, with responsive space for the cake and memories.
+  const distance = Math.max(8.6, 5.1 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect));
   const target = center.clone().setY(0);
   return {
     fov, target, distance, shiftY: -.10,

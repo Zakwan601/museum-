@@ -17,9 +17,9 @@ type Plant = { p: [number, number, number]; s: [number, number, number]; color: 
 function makeSurface() {
   const positions: number[] = [0, 0, 0], colors: number[] = [], indices: number[] = [];
   const groundColor = (x: number, z: number) => {
-    const c = new THREE.Color('#7fae88');
+    const c = new THREE.Color('#88ad94');
     const softness = .5 + .5 * Math.sin(x * .8 + z * .55);
-    c.lerp(new THREE.Color('#c2d49a'), softness * .32);
+    c.lerp(new THREE.Color('#c6d2aa'), softness * .32);
     for (const bed of flowerBeds) {
       const patch = Math.max(0, 1 - Math.hypot(x - bed.x, z - bed.z) / 1.05);
       c.lerp(new THREE.Color('#709b86'), patch * .32);
@@ -113,10 +113,14 @@ const garden = (() => {
       petals.push({ p: [x, heightAt(x, z) + .023, z], s: [.046 + (i % 2) * .015, .006, .025], rotation: [0, a, .05], color: i % 2 ? bed.color : bed.accent });
     }
     for (let i = 0; i < bed.count; i++) {
-      const [dx, dz, size] = offsets[i], x = bed.x + dx, z = bed.z + dz;
+      const [dx, dz, budSize] = offsets[i], angle = bedIndex * .87;
+      const size = budSize * (bedIndex % 3 === 0 ? 1.1 : .96);
+      const bedSpread = bedIndex < 4 ? .95 : 1.18;
+      const x = bed.x + (dx * Math.cos(angle) - dz * Math.sin(angle)) * bedSpread;
+      const z = bed.z + (dx * Math.sin(angle) + dz * Math.cos(angle)) * bedSpread;
       const ground = heightAt(x, z), h = .16 + size * .12, spread = .056 * size;
-      blades.push({ p: [x, ground + h / 2, z], s: [.009, h, .009], color: '#548c69' });
-      greens.push({ p: [x + .035, ground + h * .42, z + .008], s: [.057 * size, .012, .024 * size], rotation: [0, bedIndex + i * .8, .25], color: '#83b480' });
+      blades.push({ p: [x, ground + h / 2, z], s: [.009, h, .009], color: '#668a70' });
+      greens.push({ p: [x + .035, ground + h * .42, z + .008], s: [.057 * size, .012, .024 * size], rotation: [0, bedIndex + i * .8, .25], color: '#98b58b' });
       for (let petal = 0; petal < 5; petal++) {
         const a = petal / 5 * Math.PI * 2 + i * .6;
         petals.push({ p: [x + Math.cos(a) * spread, ground + h + .008 * Math.sin(a), z + Math.sin(a) * spread], s: [.061 * size, .021 * size, .038 * size], rotation: [0, -a, .08], color: i % 3 ? bed.color : bed.accent });
@@ -124,6 +128,22 @@ const garden = (() => {
       centers.push({ p: [x, ground + h + .017, z], s: [.027 * size, .021 * size, .027 * size], color: bedIndex === 1 ? '#d9ad6d' : '#e9d4a2' });
     }
   });
+  // Three partial curved borders, batched with the existing plants. Keep the
+  // arrival, central path and cake camera corridor clear rather than making a ring.
+  for (const [arc, [start, end, count]] of [[.12, .95, 8], [1.45, 2.6, 10], [3.0, 3.55, 6]].entries()) {
+    for (let i = 0; i < count; i++) {
+      const a = start + (end - start) * i / (count - 1), r = outline(a) * (.87 + (i % 2) * .025);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r * .76, ground = heightAt(x, z), size = .9 + (i % 3) * .13;
+      const h = .17 + size * .08, color = ['#eeb0c4', '#fff0dd', '#cbb7e6'][arc];
+      blades.push({ p: [x, ground + h / 2, z], s: [.012, h, .012], color: '#789276' });
+      greens.push({ p: [x + .05, ground + .08, z], s: [.14, .025, .07], rotation: [0, -a, .1], color: i % 2 ? '#92ad87' : '#7f9f80' });
+      for (let j = 0; j < 5; j++) {
+        const t = j / 5 * Math.PI * 2 + a;
+        petals.push({ p: [x + Math.cos(t) * .075 * size, ground + h, z + Math.sin(t) * .075 * size], s: [.085 * size, .027 * size, .055 * size], rotation: [0, -t, .08], color: i % 4 ? color : '#fff1df' });
+      }
+      centers.push({ p: [x, ground + h + .016, z], s: [.03, .022, .03], color: '#ead7aa' });
+    }
+  }
   const patches = [[2.75, -.35, 7], [1.35, 1.65, 6], [-1.65, 1.55, 8], [-2.55, .3, 5], [-1.3, -1.95, 9], [.45, -2.25, 6]];
   patches.forEach(([x, z, count], patch) => {
     for (let i = 0; i < count; i++) {

@@ -1,3 +1,4 @@
+import GardenAccents from './GardenAccents';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -71,12 +72,13 @@ export default function LittleUniverse({ ending, cake, memories, compact, reduce
     <directionalLight position={[3, 9, 6]} intensity={1} color="#ffe4d4" />
     <group ref={world} name="floating-island">
       <FloatingGardenIsland />
+      <GardenAccents cake={cake} />
     </group>
     <AnniversaryCake cake={cake} reducedMotion={reducedMotion || simple} />
     {!simple && !reducedMotion && <GardenAtmosphere compact={compact} />}
     <group ref={cards} name="memory-constellation" visible={false}>
       {placements.map(({ photo, original, position, scale }) => <group key={original.id} name={`memory-${original.id}`} position={position} quaternion={composition.camera.quaternion} scale={scale}>
-        <PhotoFrame photo={photo} compact reducedMotion onClick={() => { if (ending.phase === 'complete') onPhotoClick(original); }} />
+        <PhotoFrame museumFrame={false} photo={photo} compact reducedMotion onClick={() => { if (ending.phase === 'complete') onPhotoClick(original); }} />
         <MemoryTitle title={original.title} />
       </group>)}
     </group>

@@ -263,3 +263,33 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
   .tutorial-swipe { width:64px; height:48px; }
 }
 @media (prefers-reduced-motion:reduce) { .swipe-hand { animation:none; } }
+
+/* A shared rose-glass finish; color only, keeping all control geometry intact. */
+.museum-app { --glass-ink:#fff0e7; --glass-line:#f4d9dc55; --glass-top:#654654d9; --glass-bottom:#382936d9; --room-accent:#f0cfca; }
+.museum-app[data-room=college] { --glass-top:#62516bd9; --glass-bottom:#342c43d9; --room-accent:#e3d2ed; }
+.museum-app[data-room=university] { --glass-top:#795a50d9; --glass-bottom:#45333bd9; --room-accent:#f2dbc0; }
+.museum-app[data-room=outro] { --glass-top:#51435fd9; --glass-bottom:#2c2941d9; --room-accent:#efdaef; }
+.hud-button, .photo-prompt:not(.vintage-photo-prompt), .museum-menu, .immersive-message, .cake-invitation, .cake-wish-message {
+  color:var(--glass-ink); border-color:var(--glass-line); background:linear-gradient(150deg,var(--glass-top),var(--glass-bottom));
+  box-shadow:inset 0 1px 0 #fff4ea21,0 4px 16px #23132326;
+}
+.hud-button { transition:background .18s,border-color .18s,box-shadow .18s; }
+.hud-button:hover { background:linear-gradient(150deg,#906376e6,#584057e6); border-color:#ffe7dc9c; box-shadow:inset 0 1px 0 #fff6ee35,0 4px 16px #23132335; }
+.hud-button svg { color:var(--room-accent); }
+.museum-menu { background:linear-gradient(150deg,#513c4fee,#2c2435f5); border-radius:20px; }
+.museum-menu h1 { color:#ffede1; font-weight:400; }
+.menu-setting { border-bottom-color:#ead4dc1c; color:#f3e3e5; }
+.menu-setting input { accent-color:#d5a0b3; }
+.room-route [aria-current=step] { color:var(--room-accent); }
+.room-progress { color:#f6ded1b3; }
+.museum-location { color:#fff1e8; }
+.immersive-entry { background:linear-gradient(140deg,#927084ee,#59485fed); border-color:#f4d9dc73; box-shadow:inset 0 1px 0 #fff6ed33,0 5px 18px #21152835; }
+.virtual-joystick { border-color:#f2d7de55; box-shadow:inset 0 1px 8px #fff2ec10,0 3px 14px #23132318; }
+.joystick-knob { border-color:#fff0e5a6; box-shadow:inset 0 2px 5px #fff5ed3b,0 3px 12px #29102826; }
+.vintage-photo { background-color:#f6eddb; box-shadow:0 16px 48px #180f244d,0 1px 3px #21151d33; }
+.vintage-photo .photo-modal-image { filter:saturate(.97) sepia(.025); }
+.vintage-caption { color:#6a5148; }
+.vintage-date { color:#9b7c69; font-style:italic; }
+.vintage-photo .photo-caption { color:#7b6255; }
+.photo-card-close { background:#fbf3e5ef; color:#775a54; box-shadow:0 2px 9px #2c1d1015; }
+.vintage-photo-prompt { color:#70574b; background-color:#f6eddb; box-shadow:0 3px 12px #1c101c2e; }

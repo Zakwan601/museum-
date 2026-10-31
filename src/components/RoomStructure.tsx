@@ -34,9 +34,9 @@ function ArchedDoor({ x, roomId }: { x: number; roomId: string }) {
       <meshStandardMaterial color={colors.wall} roughness={.92} />
     </mesh>
     {[-1, 1].map(face => <group key={face} position={[0, 0, face * .167]}>
-      <mesh geometry={archTrim}><meshStandardMaterial color={colors.trim} roughness={.65} side={THREE.DoubleSide} /></mesh>
+      <mesh geometry={archTrim}><meshStandardMaterial color={colors.gold} metalness={.4} roughness={.48} side={THREE.DoubleSide} /></mesh>
       {[-1, 1].map(side => <mesh key={side} position={[side * (radius + .065), spring / 2, 0]}>
-        <boxGeometry args={[.13, spring, .035]} /><meshStandardMaterial color={colors.trim} roughness={.65} />
+        <boxGeometry args={[.13, spring, .035]} /><meshStandardMaterial color={colors.gold} metalness={.4} roughness={.48} />
       </mesh>)}
     </group>)}
   </group>;

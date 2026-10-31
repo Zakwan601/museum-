@@ -1,3 +1,4 @@
+import ArchFlorals from './ArchFlorals';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -26,7 +27,7 @@ function particleSprite() {
 }
 
 export default function MagicArchway({ portal, transition, compact, reducedMotion, simple }: { portal: RoomPortal; transition: RoomTransitionState; compact: boolean; reducedMotion: boolean; simple: boolean }) {
-  const color = ['#f2d4ae', '#c7d6ff', '#ffe0a3', '#e4c8f1'][portal.to];
+  const color = ['#f2d4ae', '#dfcfef', '#ffe0a3', '#e4c8f1'][portal.to];
   const main = useRef<THREE.MeshBasicMaterial>(null), aura = useRef<THREE.MeshBasicMaterial>(null), veil = useRef<THREE.MeshBasicMaterial>(null), motes = useRef<THREE.Points>(null);
   const count = compact ? 14 : 24;
   const positions = useMemo(() => new Float32Array(count * 3), [count]);
@@ -54,6 +55,7 @@ export default function MagicArchway({ portal, transition, compact, reducedMotio
     (motes.current.material as THREE.PointsMaterial).opacity = Math.min(1, t * 3) * Math.max(0, 1 - t / 1.65) * .85;
   });
   return <group name={`magic-portal-${portal.id}`} position={[portal.x - portal.direction * .19, 0, 0]} rotation={[0, portal.direction > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
+    <ArchFlorals palette={portal.from} />
     <mesh geometry={halo} raycast={noRaycast}><meshBasicMaterial ref={aura} color={color} transparent opacity={.07} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
     <mesh geometry={core} raycast={noRaycast}><meshBasicMaterial ref={main} color={color} transparent opacity={.6} depthWrite={false} toneMapped={false} /></mesh>
     <mesh geometry={veilGeometry} position={[0, 0, -.01]} raycast={noRaycast}><meshBasicMaterial ref={veil} color={structureColors(['school', 'college', 'university', 'outro'][portal.to]).ceiling} transparent opacity={.1} depthWrite={false} side={THREE.DoubleSide} /></mesh>

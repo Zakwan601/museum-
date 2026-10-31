@@ -1,6 +1,6 @@
 import { MUSIC } from '../config';
 
-const MUSIC_LEVEL = .045, SOFT_LEVEL = .018;
+const MUSIC_LEVEL = .03, SOFT_LEVEL = .012;
 
 export class AmbientMusic {
   private ctx: AudioContext | null = null;

@@ -33,6 +33,11 @@ function layout() {
       bulbs.push({ p: [x + Math.cos(a) * .32, .095, z + Math.sin(a) * .25], s: [.014, .014, .014], color: '#ffdb94' });
     }
   }
+  // A few petals on the cloth, reusing the existing instanced greenery batch.
+  for (let i = 0; i < 5; i++) {
+    const a = i * 2.4;
+    leaves.push({ p: [Math.cos(a) * .34, .758, Math.sin(a) * .34], s: [.035, .006, .018], r: [0, a, .08], color: i % 2 ? '#edb7c9' : '#fff0df' });
+  }
   const spiral = Array.from({ length: 65 }, (_, i) => {
     const t = i / 64, a = t * Math.PI * 6;
     return new THREE.Vector3(Math.cos(a) * (.085 + .09 * Math.abs(t - .5)), .13 + t * .47, Math.sin(a) * (.085 + .09 * Math.abs(t - .5)));

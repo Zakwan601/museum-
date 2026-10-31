@@ -30,6 +30,19 @@ export default function AnniversaryCake({ cake, reducedMotion = false }: { cake:
   const pedestal = useMemo(() => new THREE.LatheGeometry([
     [0, 0], [.30, 0], [.33, .035], [.30, .07], [.12, .12], [.075, .22], [.07, .52], [.12, .65], [.36, .69], [.38, .72], [.36, .75], [0, .75],
   ].map(([x, y]) => new THREE.Vector2(x, y)), 24), []);
+  const cloth = useMemo(() => {
+    const geometry = new THREE.LatheGeometry([[.405, .67], [.398, .739], [.36, .754], [0, .754]].map(([x,y]) => new THREE.Vector2(x,y)), 24);
+    const p = geometry.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), amount = Math.max(0, (.75 - p.getY(i)) / .08);
+      p.setY(i, p.getY(i) + Math.cos(Math.atan2(z, x) * 8) * .018 * amount);
+    }
+    geometry.computeVertexNormals(); return geometry;
+  }, []);
+  const clothHem = useMemo(() => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Array.from({ length: 49 }, (_, i) => {
+    const a = i / 48 * Math.PI * 2; return new THREE.Vector3(Math.sin(a) * .405, .67 + Math.cos(a * 8) * .018, Math.cos(a) * .405);
+  })), 48, .004, 4, true), []);
+  useEffect(() => () => { cloth.dispose(); clothHem.dispose(); }, [cloth, clothHem]);
   const poolTexture = useMemo(() => {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const ctx = c.getContext('2d')!, gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -86,6 +99,8 @@ export default function AnniversaryCake({ cake, reducedMotion = false }: { cake:
   });
   return <group name="anniversary-cake" position={[CAKE.position.x - GARDEN_CENTER_X, .04, CAKE.position.z]} userData={{ cake: true }}>
     <CakeDecorations cake={cake} reducedMotion={reducedMotion} />
+    <mesh name="cake-ivory-cloth" geometry={cloth} material={palette[1].material} raycast={noRaycast} />
+    <mesh name="cake-cloth-gold-hem" geometry={clothHem} material={palette[3].material} raycast={noRaycast} />
     <mesh name="cake-pedestal" geometry={pedestal} material={palette[0].material} />
     <mesh position={[0, .735, 0]} rotation={[Math.PI / 2, 0, 0]} material={palette[3].material}><torusGeometry args={[.365, .012, 6, 24]} /></mesh>
     <mesh position={[0, .78, 0]} material={palette[3].material}><cylinderGeometry args={[.31, .31, .025, 24]} /></mesh>

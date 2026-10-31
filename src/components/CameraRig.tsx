@@ -152,8 +152,8 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
     }
     const ceremony = cakeCeremonyActive(cake);
     const halfHorizontalFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(settings.fov / 2)) * perspectiveCamera.aspect);
-    const ceremonyDistance = Math.max(cake.phase === 'constellation' || cake.phase === 'heartHold' ? 5.8 : 4.4, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
-    p.distance = THREE.MathUtils.damp(p.distance, ceremony ? ceremonyDistance : ending.phase === 'cake' ? (settings.phone && settings.portrait ? 5.5 : settings.compact ? 6.2 : 6.8) : settings.distance, 5, dt);
+    const ceremonyDistance = Math.max(cake.phase === 'constellation' || cake.phase === 'heartHold' ? 5.2 : 3.9, (charPos.distanceTo(companionPos) * .5 + .65) / Math.sin(halfHorizontalFov));
+    p.distance = THREE.MathUtils.damp(p.distance, ceremony ? ceremonyDistance : ending.phase === 'cake' ? (settings.phone && settings.portrait ? 4.6 : settings.compact ? 5.1 : 5.6) : settings.distance, 5, dt);
     p.height = THREE.MathUtils.damp(p.height, settings.lookHeight, 5, dt);
     p.pitch = THREE.MathUtils.damp(p.pitch, settings.pitchOffset, 5, dt);
     p.compact = THREE.MathUtils.damp(p.compact, settings.compact ? 1 : 0, 5, dt);
@@ -232,7 +232,7 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
       const aspect = perspective.aspect || 1;
       // Keep the couple and bouquet fully visible without rotating the shot.
       const desiredDistance = gifting
-        ? Math.max(4.6, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
+        ? Math.max(4.0, 2.6 / (2 * Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect))
         : Math.min(5.4, Math.max(kiss.mode === 'photo' ? 3.4 : 2.8, 2.2 / aspect));
       shotDistance.current = THREE.MathUtils.damp(shotDistance.current, desiredDistance, 6, dt);
       const distance = shotDistance.current;

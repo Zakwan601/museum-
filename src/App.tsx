@@ -150,7 +150,7 @@ export default function App() {
   const closeLetter = useCallback(() => setLetterOpen(false), []);
   const blocked = letterOpen || Boolean(selectedPhoto) || menuOpen || isKissing || isTransitioning || endingLocked || sitting;
   return (
-    <div ref={museumElement} data-ending-complete={endingPhase === 'complete'} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
+    <div ref={museumElement} data-room={currentRoom.id} data-ending-complete={endingPhase === 'complete'} className={`museum-app ${entered ? 'museum-arrival' : ''} ${inEnding ? 'ending-theme' : ''}`}>
       {!entered ? <Intro onEnter={finishIntro} onEnterRequest={() => { if (settings.compact) void immersive.enter(); }} reducedMotion={settings.reducedMotion} /> : <>
 
       <Canvas

@@ -121,16 +121,16 @@ export default function Gallery({ settings, charPos }: { settings: ExperienceSet
   return (
     <>
       <primitive object={sunTarget} />
-      <ambientLight intensity={0.55} color="#ffe2ed" />
-      <hemisphereLight args={['#fff0ed', '#5c354f', 0.7]} />
-      <pointLight position={[0, 4.5, 0]} intensity={0.5} distance={18} color="#ffe0c7" />
+      <ambientLight intensity={0.52} color="#ffe9df" />
+      <hemisphereLight args={['#fff1e7', '#76627e', 0.72]} />
+      <pointLight position={[0, 4.5, 0]} intensity={0.45} distance={18} color="#ffe5c8" />
       <directionalLight
         ref={sun}
         target={sunTarget}
         key={settings.shadowSize}
         position={[4, 8, 4]}
-        intensity={0.8}
-        color="#ffe0c7"
+        intensity={0.76}
+        color="#ffe5c8"
         castShadow
         shadow-mapSize={[settings.shadowSize, settings.shadowSize]}
         shadow-bias={-.0003}
@@ -143,7 +143,7 @@ export default function Gallery({ settings, charPos }: { settings: ExperienceSet
       />
 
       <mesh geometry={rugGeometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
-        <meshStandardMaterial color="#994f72" roughness={0.9} />
+        <meshStandardMaterial color="#a55f7e" roughness={0.9} />
       </mesh>
       <mesh geometry={rugBorderGeometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} scale={.965}>
         <meshStandardMaterial color="#c4a26a" roughness={0.4} metalness={0.5} side={THREE.DoubleSide} />
