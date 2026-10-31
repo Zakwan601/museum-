@@ -5,7 +5,7 @@ export type CakePhase = 'hidden' | 'revealing' | 'walking' | 'inviting' | 'posit
 export const CAKE = {
   position: new THREE.Vector3(GARDEN_CENTER_X - .35, 0, -4.6),
   npcPosition: new THREE.Vector3(GARDEN_CENTER_X - 1.5, 0, -3.8),
-  collisionRadius: 1.0, interactionRange: 1.55, revealSeconds: 2.4,
+  collisionRadius: 1.0, interactionRange: 2.0, revealSeconds: 2.4,
 };
 export const createCakeState = () => ({
   phase: 'hidden' as CakePhase, elapsed: 0, reveal: 0,

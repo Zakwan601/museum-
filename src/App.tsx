@@ -206,7 +206,20 @@ export default function App() {
           </div>}
         </>}
         {endingPhase === 'cake' && ['wish', 'blowing'].includes(cakeState.phase) && <div className="cake-ceremony-ui">
-          <p className="cake-wish-message" role="status">Close your eyes. If you could make one wish for us, what would it be?</p>
+          <p className="cake-wish-message" role="status">kiss me,
+
+close your eyes,
+
+miss me,
+
+close your eyes,
+
+
+i can read your lips,
+
+on your fingertips,
+
+Hehehe</p>
           {cakeState.phase === 'wish' && cakeState.canBlow && <button type="button" className="hud-button cake-blow-button" onClick={() => { if (blowCakeCandles(cake)) onCakeChange(); }}>Blow Out Candles </button>}
         </div>}
         {!selectedPhoto && !menuOpen && (couchState.nearby || sitting) && <div className="couch-interaction">

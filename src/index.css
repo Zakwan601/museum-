@@ -160,18 +160,18 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 
 /* Cake stage: the same HUD controls, clear of joystick and safe-area edges. */
 .cake-invitation { position: absolute; top: max(84px, calc(env(safe-area-inset-top) + 74px)); left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 36px)); margin: 0; padding: 12px 18px; border: 1px solid #f0d1a838; border-radius: 18px; background: #251c2dc9; color: #ffe8ce; font-size: 13px; line-height: 1.7; text-align: center; pointer-events: none; }
-.cake-interaction { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(260px, calc(100vw - 32px)); height: 52px; pointer-events: auto; text-align: center; }
+.cake-interaction { position: absolute; left: 50%; bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px)); transform: translateX(-50%); width: min(260px, calc(100vw - 32px)); height: 52px; pointer-events: auto; text-align: center; }
 .cake-wish-button { width: 100%; min-height: 52px; height: 52px; padding: 12px 16px; border-color: #e9c78e70; background: #4a3548e8; color: #ffeac3; font-size: 13px; line-height: 1.5; touch-action: manipulation; }
 .cake-wish-button:focus-visible { outline: 2px solid #ffe4a9; outline-offset: 3px; }
 .cake-interaction p { margin: 8px 0 0; padding: 8px 10px; border-radius: 12px; background: #251c2dd9; color: #f4dfcc; font-size: 11px; line-height: 1.6; }
 .cake-memories summary { padding: 12px 0; color: #f9dfe5; font-size: 13px; cursor: pointer; }
 @media (max-height: 500px) and (orientation: landscape) { .ending-theme .museum-location { display: none; } .cake-invitation { top: max(14px, env(safe-area-inset-top)); width: min(330px, calc(100% - 300px)); padding: 8px 14px; font-size: 11px; } .cake-wish-button { min-height: 48px; } }
 
-.cake-ceremony-ui { position: absolute; top: max(76px, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%); width: min(420px, calc(100% - 32px)); text-align: center; pointer-events: none; }
-.cake-wish-message { margin: 0; padding: 14px 20px; border-radius: 18px; background: #251c2ddd; color: #ffe8ce; font-size: 14px; line-height: 1.7; animation: ceremony-appear .7s ease both; }
-.cake-blow-button { pointer-events: auto; margin: 14px auto 0; min-height: 52px; padding: 12px 22px; justify-content: center; animation: ceremony-appear .5s ease both; }
+.cake-ceremony-ui { position: absolute; inset: 0; text-align: center; pointer-events: none; }
+.cake-wish-message { position: absolute; top: max(76px, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%); width: min(420px, calc(100% - 32px)); box-sizing: border-box; margin: 0; padding: 14px 20px; border-radius: 18px; background: #251c2ddd; color: #ffe8ce; font-size: 14px; line-height: 1.7; animation: ceremony-appear .7s ease both; }
+.cake-blow-button { position: absolute; left: 50%; bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px)); transform: translateX(-50%); width: max-content; max-width: calc(100% - 40px); pointer-events: auto; margin: 0; min-height: 52px; padding: 12px 22px; justify-content: center; animation: ceremony-appear .5s ease both; }
 @keyframes ceremony-appear { from { opacity: 0; } to { opacity: 1; } }
-@media (max-height: 500px) { .cake-ceremony-ui { top: max(12px, env(safe-area-inset-top)); width: min(420px, calc(100% - 150px)); } .cake-wish-message { padding: 8px 14px; font-size: 12px; } .cake-blow-button { margin-top: 8px; min-height: 48px; } }
+@media (max-height: 500px) { .cake-wish-message { top: max(12px, env(safe-area-inset-top)); width: min(420px, calc(100% - 150px)); padding: 8px 14px; font-size: 12px; } .cake-blow-button { min-height: 48px; } }
 @media (prefers-reduced-motion: reduce) { .cake-wish-message, .cake-blow-button { animation: none; } }
 
 .control-tutorial { position: absolute; bottom: max(30px, calc(env(safe-area-inset-bottom) + 22px)); left: 50%; transform: translateX(-50%); width: min(430px, calc(100% - 48px)); margin: 0; padding: 6px 0; color: #fff0e6; font-size: 18px; line-height: 1.6; text-align: center; text-shadow: 0 2px 5px #26121f, 0 0 12px #26121fcc; pointer-events: none; }
@@ -293,3 +293,21 @@ canvas { display: block; touch-action: none; user-select: none; -webkit-user-sel
 .vintage-photo .photo-caption { color:#7b6255; }
 .photo-card-close { background:#fbf3e5ef; color:#775a54; box-shadow:0 2px 9px #2c1d1015; }
 .vintage-photo-prompt { color:#70574b; background-color:#f6eddb; box-shadow:0 3px 12px #1c101c2e; }
+
+/* Keep the walking tutorial focused on its live joystick. */
+.museum-hud:has(.control-tutorial[data-step="move"]) { z-index: 70; }
+.museum-hud:has(.control-tutorial[data-step="move"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(43, 44, 49, .78);
+  pointer-events: none;
+}
+.museum-hud:has(.control-tutorial[data-step="move"]) .museum-joystick,
+.museum-hud:has(.control-tutorial[data-step="move"]) .control-tutorial { z-index: 2; }
+.museum-hud:has(.control-tutorial[data-step="move"]) .virtual-joystick {
+  border-color: #ffe1ebcc;
+  box-shadow: 0 0 0 6px #f9cddd18, 0 0 28px #f9cddd55;
+  background: #80586e;
+}

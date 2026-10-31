@@ -6,26 +6,38 @@ import { BOOKS, BOOKSHELF } from '../lib/books';
 import type { BookConfig } from '../lib/books';
 
 const noRaycast = () => {};
+// Keep the map shader active while covers load, avoiding a late shader switch.
+const coverPlaceholder = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+coverPlaceholder.colorSpace = THREE.SRGBColorSpace;
+coverPlaceholder.needsUpdate = true;
 const wood = new THREE.MeshStandardMaterial({ color: '#775043', roughness: .72 });
 const walnut = new THREE.MeshStandardMaterial({ color: '#4f3430', roughness: .86 });
 const gold = new THREE.MeshStandardMaterial({ color: '#c5a572', metalness: .5, roughness: .45 });
 const pages = new THREE.MeshStandardMaterial({ color: '#eee1c9', roughness: .95 });
 const covers = ['#c99452', '#d6b95d', '#42677b', '#b18339', '#5c6c67', '#777767'];
 
-function ShelfBook({ book, index, nearby, loadCover, onOpen }: { book: BookConfig; index: number; nearby: boolean; loadCover: boolean; onOpen: (book: BookConfig) => void }) {
+function ShelfBook({ book, index, nearby, onOpen }: { book: BookConfig; index: number; nearby: boolean; onOpen: (book: BookConfig) => void }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const touch = useRef<{ id: number; x: number; y: number } | null>(null);
   const lastTap = useRef(-Infinity);
   useEffect(() => {
-    if (!loadCover) return;
     let disposed = false, loaded: THREE.Texture | undefined;
-    new THREE.TextureLoader().load(book.thumbnail, value => {
-      if (disposed) { value.dispose(); return; }
-      value.colorSpace = THREE.SRGBColorSpace; value.anisotropy = 2;
-      loaded = value; setTexture(value);
-    }, undefined, () => { /* Leave a plain binding if a cover cannot load; never fake artwork. */ });
-    return () => { disposed = true; loaded?.dispose(); };
-  }, [book.thumbnail, loadCover]);
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const loader = new THREE.TextureLoader();
+    const load = (attempt: number) => {
+      const source = attempt < 2 ? book.thumbnail : book.url;
+      loader.load(source, value => {
+        if (disposed) { value.dispose(); return; }
+        value.colorSpace = THREE.SRGBColorSpace; value.anisotropy = 2;
+        loaded = value; setTexture(value);
+      }, undefined, () => {
+        if (!disposed && attempt < 3) retry = setTimeout(() => load(attempt + 1), 400 * (attempt + 1));
+      });
+    };
+    // Six tiny local thumbnails can start immediately instead of waiting for proximity.
+    load(0);
+    return () => { disposed = true; clearTimeout(retry); loaded?.dispose(); };
+  }, [book.thumbnail, book.url]);
   const open = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); if (performance.now() - lastTap.current > 500) onOpen(book); };
   return <group name={book.id} position={book.shelfPosition} userData={{ interactivePhoto: true }}
     onPointerDown={e => { e.stopPropagation(); if (e.pointerType === 'touch') touch.current = { id: e.pointerId, x: e.clientX, y: e.clientY }; }}
@@ -39,7 +51,7 @@ function ShelfBook({ book, index, nearby, loadCover, onOpen }: { book: BookConfi
       <mesh position={[0, 0, -.135]}><boxGeometry args={[.72, 1.04, .025]} /><meshStandardMaterial color={covers[index]} roughness={.8} /></mesh>
       <mesh position={[-.35, 0, -.07]}><boxGeometry args={[.035, 1.04, .15]} /><meshStandardMaterial color={covers[index]} roughness={.8} /></mesh>
       <mesh userData={{ interactivePhoto: true }}>
-        <planeGeometry args={[.72, 1.04]} /><meshStandardMaterial map={texture ?? undefined} color={texture ? '#ffffff' : covers[index]} roughness={.8} />
+        <planeGeometry args={[.72, 1.04]} /><meshStandardMaterial map={texture ?? coverPlaceholder} color={texture ? '#ffffff' : covers[index]} roughness={.8} />
       </mesh>
       {nearby && <mesh position={[0, 0, -.015]} raycast={noRaycast}>
         <planeGeometry args={[.78, 1.1]} /><meshBasicMaterial color="#f3c67d" />
@@ -49,12 +61,10 @@ function ShelfBook({ book, index, nearby, loadCover, onOpen }: { book: BookConfi
 }
 
 export default function Bookshelf({ charPos, nearbyId, onOpen, compact }: { charPos: THREE.Vector3; nearbyId: string | null; onOpen: (book: BookConfig) => void; compact: boolean }) {
-  const [loadCovers, setLoadCovers] = useState(false);
   const [close, setClose] = useState(false);
   const proximity = useRef(false);
   useFrame(() => {
     const distance = Math.hypot(charPos.x - BOOKSHELF.position[0], charPos.z - BOOKSHELF.position[2]);
-    if (!loadCovers && distance < 8) setLoadCovers(true);
     const next = distance < (proximity.current ? 6 : 5);
     if (next !== proximity.current) { proximity.current = next; setClose(next); }
   });
@@ -70,7 +80,7 @@ export default function Bookshelf({ charPos, nearbyId, onOpen, compact }: { char
       {[-1, 1].map(side => <mesh key={side} material={gold} position={[side * .3, .43, .335]}><sphereGeometry args={[.028, 8, 6]} /></mesh>)}
     </group>
     {[1.78, 2.96].map(y => <mesh key={y} position={[0, y, .13]} raycast={noRaycast}><boxGeometry args={[3.7, .025, .08]} /><meshStandardMaterial color="#ffe2aa" emissive="#ffcc87" emissiveIntensity={.9} /></mesh>)}
-    {BOOKS.map((book, i) => <ShelfBook key={book.id} book={book} index={i} nearby={nearbyId === book.id} loadCover={loadCovers} onOpen={onOpen} />)}
+    {BOOKS.map((book, i) => <ShelfBook key={book.id} book={book} index={i} nearby={nearbyId === book.id} onOpen={onOpen} />)}
     <pointLight position={[0, 2.1, 1.15]} color="#ffd39b" intensity={close ? compact ? .8 : 1.3 : 0} distance={5} decay={2} />
   </group>;
 }

@@ -31,6 +31,7 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
   const lastRelocation = useRef(0);
   const finalAspect = useRef(0);
   const cakeShotStarted = useRef(false);
+  const invitationView = useRef({ started: false, settling: false });
   const cakeFocus = useMemo(() => new THREE.Vector3(), []);
   const cakeBlend = useRef(0), cakeLookHeight = useRef(1.05);
   const profile = useRef({ distance: settings.distance, height: settings.lookHeight, pitch: settings.pitchOffset, compact: settings.compact ? 1 : 0 });
@@ -50,6 +51,7 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
     const el = gl.domElement;
     const down = (e: PointerEvent) => {
       if (kiss.active || cameraState.inputLocked || dragPointerId.current !== null || e.button !== 0) return;
+      invitationView.current.settling = false;
       const rect = el.getBoundingClientRect();
       const point = new THREE.Vector2((e.clientX - rect.left) / rect.width * 2 - 1, -(e.clientY - rect.top) / rect.height * 2 + 1);
       ray.far = Infinity;
@@ -97,6 +99,19 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
   useFrame((_, frameDelta) => {
     if (suspended) return;
     const delta = Math.min(frameDelta, .05);
+    if (cake.phase === 'hidden') { invitationView.current.started = false; invitationView.current.settling = false; }
+    if (ending.phase === 'cake' && cake.phase === 'inviting' && !invitationView.current.started) {
+      invitationView.current.started = true; invitationView.current.settling = true;
+      // The girl faces local +Z. Settle behind her once when control returns,
+      // using the shortest orbit; subsequent dragging remains entirely manual.
+      const girl = scene.getObjectByName('player-girl');
+      const heading = girl ? girl.rotation.y : Math.atan2(companionPos.x - charPos.x, companionPos.z - charPos.z);
+      const behind = heading + Math.PI;
+      const turn = THREE.MathUtils.euclideanModulo(behind - smoothAzimuth.current + Math.PI, Math.PI * 2) - Math.PI;
+      cameraState.azimuth = smoothAzimuth.current + turn;
+      cameraState.pitch = .20;
+    }
+    if (cake.phase !== 'inviting') invitationView.current.settling = false;
     if (!cake.acknowledged) { cakeShotStarted.current = false; }
     if (cakeCeremonyActive(cake) && !cakeShotStarted.current) {
       cakeShotStarted.current = true;
@@ -110,9 +125,10 @@ export default function CameraRig({ suspended = false, couch, cake, ending, onEn
       cameraState.azimuth = smoothAzimuth.current + turn;
       cameraState.pitch = .20;
     }
-    const turningSpeed = cakeCeremonyActive(cake) ? 1.4 : 12;
+    const turningSpeed = cakeCeremonyActive(cake) ? 1.4 : invitationView.current.settling ? (settings.reducedMotion ? 5 : 1.8) : 12;
     smoothAzimuth.current = THREE.MathUtils.damp(smoothAzimuth.current, cameraState.azimuth, turningSpeed, delta);
-    smoothPitch.current = THREE.MathUtils.damp(smoothPitch.current, cameraState.pitch, 12, delta);
+    smoothPitch.current = THREE.MathUtils.damp(smoothPitch.current, cameraState.pitch, invitationView.current.settling ? turningSpeed : 12, delta);
+    if (invitationView.current.settling && Math.abs(smoothAzimuth.current - cameraState.azimuth) < .01 && Math.abs(smoothPitch.current - cameraState.pitch) < .01) invitationView.current.settling = false;
     cameraState.smoothedAzimuth = smoothAzimuth.current;
   }, -2);
 
