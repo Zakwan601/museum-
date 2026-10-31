@@ -9,22 +9,26 @@ const skyMaterial = new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, dithering: true,
   uniforms: {
     indigo: { value: new THREE.Color('#111b39') },
-    twilight: { value: new THREE.Color('#535e83') },
+    twilight: { value: new THREE.Color('#797695') },
     below: { value: new THREE.Color('#566783') },
-    warmth: { value: new THREE.Color('#ae8698') },
+    warmth: { value: new THREE.Color('#f3c3a6') },
+    blush: { value: new THREE.Color('#dba6bb') },
   },
   vertexShader: `varying vec3 vDirection; void main(){vDirection=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
   fragmentShader: `
     #include <common>
     #include <dithering_pars_fragment>
     varying vec3 vDirection;
-    uniform vec3 indigo; uniform vec3 twilight; uniform vec3 below; uniform vec3 warmth;
+    uniform vec3 indigo; uniform vec3 twilight; uniform vec3 below; uniform vec3 warmth; uniform vec3 blush;
     void main(){
       float h=normalize(vDirection).y;
       vec3 color=mix(twilight,indigo,smoothstep(-.48,.22,h));
       color=mix(below,color,smoothstep(-.85,-.46,h));
-      float horizon=1.-smoothstep(0.,.23,abs(h+.37));
-      color=mix(color,warmth,horizon*.35);
+      // A broad blush haze melts into a narrower peach glow at the horizon.
+      float roseHaze=1.-smoothstep(.02,.34,abs(h+.32));
+      float horizon=1.-smoothstep(0.,.18,abs(h+.40));
+      color=mix(color,blush,roseHaze*.58);
+      color=mix(color,warmth,horizon*.62);
       gl_FragColor=vec4(color,1.);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>

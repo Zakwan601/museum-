@@ -22,11 +22,21 @@ function buildAccents() {
     for (let i = 0; i < colors.length; i += 3) { colors[i] = tint.r; colors[i + 1] = tint.g; colors[i + 2] = tint.b; }
     copy.setAttribute('color', new THREE.BufferAttribute(colors, 3)); parts[bucket].push(copy);
   }
+  const heart = new THREE.Shape();
+  heart.moveTo(0, -.95);
+  heart.bezierCurveTo(-.3, -.6, -1.05, -.1, -1.05, .42);
+  heart.bezierCurveTo(-1.05, 1, -.35, 1.12, 0, .62);
+  heart.bezierCurveTo(.35, 1.12, 1.05, 1, 1.05, .42);
+  heart.bezierCurveTo(1.05, -.1, .3, -.6, 0, -.95);
+  const heartStone = new THREE.ExtrudeGeometry(heart, { depth: 1, bevelEnabled: true, bevelSize: .08, bevelThickness: .08, bevelSegments: 1, curveSegments: 8 });
+  heartStone.rotateX(-Math.PI / 2); heartStone.translate(0, -.5, 0);
   // Flat stepping stones follow the open approach, stopping before the cake.
   for (let i = 0; i < 10; i++) {
     const t = i / 9, x = Math.sin(t * Math.PI * 1.4) * .25 - .25 * t, z = .65 - t * 4.05;
-    add('matte', stone, ['#e6d8c3', '#d9c9bf', '#e9deca'][i % 3], [x, .014, z], [.29 + (i % 3) * .025, .024, .20], [0, i * .51, 0]);
+    const heartShaped = i === 2 || i === 5 || i === 8;
+    add('matte', heartShaped ? heartStone : stone, heartShaped ? '#e7c7c4' : ['#e6d8c3', '#d9c9bf', '#e9deca'][i % 3], [x, heartShaped ? .025 : .014, z], [.29 + (i % 3) * .025, .024, heartShaped ? .24 : .20], [0, heartShaped ? (i % 2 ? -.16 : .13) : i * .51, 0]);
   }
+  heartStone.dispose();
   // Trailing foliage rests against the rock edge; nothing moves each frame.
   for (const [i, angle] of [.35, .75, 1.5, 2.0, 2.55, 3.2, 3.8, 5.5].entries()) {
     const radius = gardenOutline(angle), length = .85 + (i % 3) * .22;

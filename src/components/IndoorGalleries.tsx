@@ -136,8 +136,8 @@ function GalleryInterior({ golden, active, compact, reducedMotion, couch, camera
       <mesh position={[0, .11, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[.27, .012, 6, 24]} /><meshStandardMaterial color={theme.gold} metalness={.35} roughness={.5} /></mesh>
     </group> : <>
     <group position={[0, 0, bench.position[2]]} userData={{ cameraObstacle: true, interactiveCouch: !golden }} name="gallery-bench" onClick={e => { if (!golden && couch.nearby && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) { e.stopPropagation(); onCouchStart(); } }}>
-      <mesh geometry={cushion} position={[0, .49, -.4]} castShadow><meshStandardMaterial color={theme.fabric} roughness={.94} /></mesh>
-      <mesh position={[0, .78, .44]}><boxGeometry args={[3.05, .4, .1]} /><meshStandardMaterial color={theme.fabric} roughness={.94} /></mesh>
+      <mesh geometry={cushion} position={[0, .49, -.4]} castShadow><meshStandardMaterial color={theme.fabric} emissive="#eab76c" emissiveIntensity={active ? couch.nearby ? .28 : .13 : 0} roughness={.94} /></mesh>
+      <mesh position={[0, .78, .44]}><boxGeometry args={[3.05, .4, .1]} /><meshStandardMaterial color={theme.fabric} emissive="#eab76c" emissiveIntensity={active ? couch.nearby ? .28 : .13 : 0} roughness={.94} /></mesh>
     </group>
     </>}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .028, 3.2]} scale={golden ? [.6, .6, 1] : [1, .65, 1]} raycast={noRaycast}>

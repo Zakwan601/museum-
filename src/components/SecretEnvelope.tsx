@@ -27,10 +27,11 @@ export default function SecretEnvelope({ charPos, active, cameraState, reducedMo
     const distance = Math.hypot(charPos.x - LOVE_LETTER_POSITION[0], charPos.z - LOVE_LETTER_POSITION[2]);
     const nearby = active && distance < (near.current ? 2.05 : 1.8);
     if (nearby !== near.current) { near.current = nearby; onNearby(nearby); }
-    const warmth = nearby ? (reducedMotion ? .7 : .7 + Math.sin(clock.elapsedTime * 1.5) * .1) : 0;
+    const hint = active ? THREE.MathUtils.clamp((5 - distance) / 3, 0, 1) : 0;
+    const warmth = active ? .12 + hint * .5 + (nearby && !reducedMotion ? .06 * Math.sin(clock.elapsedTime * 1.5) : 0) : 0;
     if (glow.current) glow.current.emissiveIntensity = warmth;
     if (flapGlow.current) flapGlow.current.emissiveIntensity = warmth * .65;
-    if (halo.current) halo.current.opacity = nearby ? .1 + warmth * .06 : 0;
+    if (halo.current) halo.current.opacity = active ? .025 + hint * .16 : 0;
   });
   const open = () => {
     if (near.current && !cameraState.inputLocked && performance.now() > cameraState.suppressPhotoClickUntil) onOpen();
@@ -43,7 +44,7 @@ export default function SecretEnvelope({ charPos, active, cameraState, reducedMo
       if (e.pointerType === 'touch' && start?.id === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5) { lastTap.current = performance.now(); open(); }
     }}
     onClick={e => { e.stopPropagation(); if (e.delta < 5 && performance.now() - lastTap.current > 500) open(); }}>
-    <mesh position={[0, 0, -.013]} raycast={() => {}}><planeGeometry args={[.82, .58]} /><meshBasicMaterial ref={halo} map={glowTexture} color="#ffd691" transparent opacity={0} depthWrite={false} /></mesh>
+    <mesh position={[0, 0, -.013]} raycast={() => {}}><planeGeometry args={[1.05, .8]} /><meshBasicMaterial ref={halo} map={glowTexture} color="#ffd691" transparent opacity={0} depthWrite={false} /></mesh>
     <mesh userData={{ interactivePhoto: true }}><boxGeometry args={[.68, .44, .025]} /><meshStandardMaterial ref={glow} color="#f0dfb9" emissive="#ffc878" roughness={.9} /></mesh>
     {[-1, 1].map(side => <group key={side} rotation={[0, side < 0 ? Math.PI : 0, 0]} userData={{ interactivePhoto: true }}>
       <mesh position={[0, 0, .019]} userData={{ interactivePhoto: true }}><shapeGeometry args={[flap, 10]} /><meshStandardMaterial ref={side === 1 ? flapGlow : undefined} color="#fff0d5" emissive="#ffcd85" roughness={.9} /></mesh>
